@@ -13,3 +13,6 @@
 [submodule "utilities-rs"]
 	path = utilities-rs
 	url = git@github.com:brandonros/utilities-rs.git
+[submodule "scraper-rs"]
+	path = scraper-rs
+	url = git@github.com:brandonros/scraper-rs.git
