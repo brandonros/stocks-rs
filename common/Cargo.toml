@@ -15,3 +15,8 @@ serde_json = "1"
 tokio = { version = "1", features = ["time"] }
 # database
 rusqlite = { git = "https://github.com/rusqlite/rusqlite.git", features = ["bundled", "serde_json"] }
+# time
+chrono = "0.4"
+chrono-tz = "0.8"
+# options greeks
+black_scholes = "0.10.0"

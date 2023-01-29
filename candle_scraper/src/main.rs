@@ -5,46 +5,6 @@ use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
 use chrono_tz::{Tz, US::Eastern};
 use common::database;
 use providers::Provider;
-use structs::*;
-
-impl database::ToQuery for Candle {
-  fn insert(&self) -> (&str, Vec<(&str, &dyn rusqlite::ToSql)>) {
-    let query = "
-        INSERT OR REPLACE INTO candles (
-          symbol,
-          resolution,
-          scraped_at,
-          timestamp,
-          open,
-          high,
-          low,
-          close,
-          volume
-      ) VALUES (
-          :symbol,
-          :resolution,
-          strftime('%s', 'now'),
-          :timestamp,
-          :open,
-          :high,
-          :low,
-          :close,
-          :volume
-      )
-    ";
-    let params = rusqlite::named_params! {
-      ":symbol": self.symbol,
-      ":resolution": self.resolution,
-      ":timestamp": self.timestamp,
-      ":open": self.open,
-      ":high": self.high,
-      ":low": self.low,
-      ":close": self.close,
-      ":volume": self.volume
-    };
-    return (query, params.to_vec());
-  }
-}
 
 fn get_regular_market_session_start_and_end(eastern_now: &DateTime<Tz>) -> (DateTime<Tz>, DateTime<Tz>) {
   let year = eastern_now.year();

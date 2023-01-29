@@ -1,6 +1,7 @@
 use chrono::DateTime;
 use chrono_tz::Tz;
 use common::http_client;
+use common::structs::*;
 
 use crate::structs::*;
 

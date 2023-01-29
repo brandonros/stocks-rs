@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# common
+common = { path = "../common" }
 # shutdown
 async-shutdown = "0.1"
 # async
@@ -24,5 +26,3 @@ chrono-tz = "0.8"
 itertools = "0.10"
 # websocket client
 websocket-lite = { version = "0.5" }
-# options greeks
-black_scholes = "0.10.0"

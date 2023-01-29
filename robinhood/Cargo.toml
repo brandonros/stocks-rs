@@ -23,5 +23,3 @@ cookie = "0.16"
 common = { path = "../common" }
 # iterator
 itertools = "0.10.5"
-# options greeks
-black_scholes = "0.10.0"

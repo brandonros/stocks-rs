@@ -1,8 +1,7 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-use crate::json_time;
+use common::json_time;
 
 #[derive(Serialize, Clone, PartialEq, Debug)]
 pub enum TradingViewMessageType {

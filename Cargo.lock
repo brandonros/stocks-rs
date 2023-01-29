@@ -383,6 +383,9 @@ dependencies = [
 name = "common"
 version = "0.1.0"
 dependencies = [
+ "black_scholes",
+ "chrono",
+ "chrono-tz",
  "log",
  "reqwest",
  "rusqlite",
@@ -1627,7 +1630,6 @@ name = "robinhood"
 version = "0.1.0"
 dependencies = [
  "async-recursion",
- "black_scholes",
  "chrono",
  "chrono-tz",
  "common",
@@ -1959,9 +1961,9 @@ name = "thinkorswim"
 version = "0.1.0"
 dependencies = [
  "async-shutdown",
- "black_scholes",
  "chrono",
  "chrono-tz",
+ "common",
  "futures",
  "itertools",
  "json_dotpath",
@@ -2153,6 +2155,7 @@ dependencies = [
  "async-shutdown",
  "chrono",
  "chrono-tz",
+ "common",
  "futures",
  "itertools",
  "json_dotpath",
