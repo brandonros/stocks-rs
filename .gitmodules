@@ -16,3 +16,6 @@
 [submodule "scraper-rs"]
 	path = scraper-rs
 	url = git@github.com:brandonros/scraper-rs.git
+[submodule "candle-scraper-rs"]
+	path = candle-scraper-rs
+	url = git@github.com:brandonros/candle-scraper-rs.git
