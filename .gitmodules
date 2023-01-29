@@ -19,3 +19,6 @@
 [submodule "options-scraper-rs"]
 	path = options-scraper-rs
 	url = git@github.com:brandonros/options-scraper-rs.git
+[submodule "quote-scraper-rs"]
+	path = quote-scraper-rs
+	url = git@github.com:brandonros/quote-scraper-rs.git
