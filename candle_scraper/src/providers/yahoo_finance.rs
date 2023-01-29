@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
-use yahoo_finance_api as yahoo;
 use common::structs::*;
+use yahoo_finance_api as yahoo;
 
 pub async fn get_candles(symbol: &str, resolution: &str, start: DateTime<Tz>, end: DateTime<Tz>) -> Result<Vec<Candle>, String> {
   let utc_start = start.with_timezone(&Utc);

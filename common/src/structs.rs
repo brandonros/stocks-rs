@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{json_time, database};
+use crate::{database, json_time};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MinimalSnapshot {

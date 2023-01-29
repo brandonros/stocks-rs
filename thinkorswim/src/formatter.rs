@@ -1,11 +1,11 @@
-use common::{greeks, json_time, structs::*};
+use crate::structs::*;
 use chrono::TimeZone;
 use chrono::{NaiveDateTime, Utc};
 use chrono_tz::US::Eastern;
+use common::{greeks, json_time, structs::*};
 use itertools::Itertools;
 use log::warn;
 use serde::Serialize;
-use crate::structs::*;
 
 pub fn build_minimal_snapshots(
   symbol: String,
