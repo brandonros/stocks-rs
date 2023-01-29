@@ -1,8 +1,8 @@
 use crate::structs::*;
+use common::http_client;
 use futures::StreamExt;
 use log::info;
 use std::collections::HashMap;
-use common::http_client;
 
 const KNOWN_ERRORS: &[&str] = &["timed out", "invalid response status: 502", "invalid response status: 503"];
 const REQUEST_TIMEOUT_MS: u64 = 5000;

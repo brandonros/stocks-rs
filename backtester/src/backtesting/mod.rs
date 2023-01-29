@@ -1,9 +1,16 @@
 use std::{collections::HashMap, sync::atomic::AtomicUsize};
 
-use rayon::prelude::{IntoParallelIterator, ParallelIterator, IntoParallelRefIterator};
+use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use tokio::io::AsyncWriteExt;
 
-use crate::{database, market_session, providers::Provider, strategies::{Strategy, StrategyIndicatorSettings, SupertrendStrategyIndicatorSettings}, structs::*, signals, math::round};
+use crate::{
+  database, market_session,
+  math::round,
+  providers::Provider,
+  signals,
+  strategies::{Strategy, StrategyIndicatorSettings, SupertrendStrategyIndicatorSettings},
+  structs::*,
+};
 
 pub mod combinations;
 pub mod signal_snapshots;
@@ -44,7 +51,12 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   let backtest_setting_combinations = combinations::build_backtest_setting_combinations();
   log::info!("built combinations");
   // build caches based on indicator setting combinations
-  log::info!("building caches for {} dates {} indicator settings combinations {} backtest settings combinations", num_dates, indicator_setting_combinations.len(), backtest_setting_combinations.len());
+  log::info!(
+    "building caches for {} dates {} indicator settings combinations {} backtest settings combinations",
+    num_dates,
+    indicator_setting_combinations.len(),
+    backtest_setting_combinations.len()
+  );
   let mut date_indicator_settings_signal_snapshots_cache = HashMap::<String, Vec<SignalSnapshot>>::new();
   let mut date_indicator_settings_direction_changes_cache = HashMap::<String, Vec<DirectionChange>>::new();
   let mut date_indicator_settings_performance_snapshots_cache = HashMap::<String, Vec<Vec<TradePerformanceSnapshot>>>::new();
@@ -59,7 +71,8 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
       let warmed_up_index = 10;
       let slippage_percentage = 0.00025; // TODO: do not hardcode
       let direction_changes = signals::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
-      let direction_changes_performance_snapshots = trade_performance::build_trade_performance_snapshots_from_direction_changes(&direction_changes, &signal_snapshots, slippage_percentage);
+      let direction_changes_performance_snapshots =
+        trade_performance::build_trade_performance_snapshots_from_direction_changes(&direction_changes, &signal_snapshots, slippage_percentage);
       let key = format!("{}:{:?}:{:?}:{}", date, strategy, indicator_setting_combination, warmed_up_index);
       date_indicator_settings_signal_snapshots_cache.insert(key.clone(), signal_snapshots);
       date_indicator_settings_direction_changes_cache.insert(key.clone(), direction_changes);
@@ -78,48 +91,51 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   log::info!("backtesting combinations");
   let num_backtested = std::sync::atomic::AtomicUsize::new(0);
   let num_combinations = combined_combinations.len();
-  let mut combination_results: Vec<(&StrategyIndicatorSettings, &BacktestSettings, BacktestStatistics)> = combined_combinations.into_par_iter().map(|(indicator_settings, backtest_settings)| {
-    let mut backtest_dates_results = vec![];
-    for date in dates {
-      // get date candles
-      let date_candles = candles_dates_map.get(date).unwrap();
-      if date_candles.len() == 0 {
-        //log::warn!("skipping {} due to no candles", date);
-        continue;
-      }
-      // get cached strategy signal/direction changes by date
-      let key = format!("{}:{:?}:{:?}:{}", date, strategy, indicator_settings, backtest_settings.warmed_up_index);
-      let signal_snapshots = date_indicator_settings_signal_snapshots_cache.get(&key).unwrap();
-      let direction_changes = date_indicator_settings_direction_changes_cache.get(&key).unwrap();
-      let direction_changes_performance_snapshots = date_indicator_settings_performance_snapshots_cache.get(&key).unwrap();
-      // backtest every direction change in date
-      if backtest_settings.backtest_mode == BacktestMode::MultipleEntry {
-        panic!("TODO");
-      }
-      let mut backtest_date_results = vec![];
-      for (index, direction_change) in direction_changes.into_iter().enumerate() {
-        let start_snapshot_index = direction_change.start_snapshot_index;
-        let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
-        let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..end_snapshot_index].to_vec(); // TODO: get rid of clone?
-        // watch out for erroneous end of day direction change
-        if trade_signal_snapshots.len() == 0 {
-          //log::warn!("trade_snapshots.len() == 0 {:?}", direction_change);
+  let mut combination_results: Vec<(&StrategyIndicatorSettings, &BacktestSettings, BacktestStatistics)> = combined_combinations
+    .into_par_iter()
+    .map(|(indicator_settings, backtest_settings)| {
+      let mut backtest_dates_results = vec![];
+      for date in dates {
+        // get date candles
+        let date_candles = candles_dates_map.get(date).unwrap();
+        if date_candles.len() == 0 {
+          //log::warn!("skipping {} due to no candles", date);
           continue;
         }
-        let direction_change_performance_snapshots = &direction_changes_performance_snapshots[index];
-        let result = signal_snapshots::backtest_trade_performance_snapshots(direction_change_performance_snapshots, signal_snapshots, backtest_settings);
-        backtest_date_results.push(result);
+        // get cached strategy signal/direction changes by date
+        let key = format!("{}:{:?}:{:?}:{}", date, strategy, indicator_settings, backtest_settings.warmed_up_index);
+        let signal_snapshots = date_indicator_settings_signal_snapshots_cache.get(&key).unwrap();
+        let direction_changes = date_indicator_settings_direction_changes_cache.get(&key).unwrap();
+        let direction_changes_performance_snapshots = date_indicator_settings_performance_snapshots_cache.get(&key).unwrap();
+        // backtest every direction change in date
+        if backtest_settings.backtest_mode == BacktestMode::MultipleEntry {
+          panic!("TODO");
+        }
+        let mut backtest_date_results = vec![];
+        for (index, direction_change) in direction_changes.into_iter().enumerate() {
+          let start_snapshot_index = direction_change.start_snapshot_index;
+          let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
+          let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..end_snapshot_index].to_vec(); // TODO: get rid of clone?
+                                                                                                             // watch out for erroneous end of day direction change
+          if trade_signal_snapshots.len() == 0 {
+            //log::warn!("trade_snapshots.len() == 0 {:?}", direction_change);
+            continue;
+          }
+          let direction_change_performance_snapshots = &direction_changes_performance_snapshots[index];
+          let result = signal_snapshots::backtest_trade_performance_snapshots(direction_change_performance_snapshots, signal_snapshots, backtest_settings);
+          backtest_date_results.push(result);
+        }
+        backtest_dates_results.push(backtest_date_results);
       }
-      backtest_dates_results.push(backtest_date_results);
-    }
-    let flattened_backtest_results: Vec<BacktestResult> = backtest_dates_results.into_iter().flatten().collect();
-    let backtest_statistics = statistics::calculate_backtest_statistics(num_dates, &flattened_backtest_results);
-    let num_backtested = num_backtested.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-    if num_backtested % 1000 == 0 {
-      log::info!("{} / {}", num_backtested, num_combinations);
-    }
-    return (indicator_settings, backtest_settings, backtest_statistics);
-  }).collect();
+      let flattened_backtest_results: Vec<BacktestResult> = backtest_dates_results.into_iter().flatten().collect();
+      let backtest_statistics = statistics::calculate_backtest_statistics(num_dates, &flattened_backtest_results);
+      let num_backtested = num_backtested.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+      if num_backtested % 1000 == 0 {
+        log::info!("{} / {}", num_backtested, num_combinations);
+      }
+      return (indicator_settings, backtest_settings, backtest_statistics);
+    })
+    .collect();
   log::info!("backtested combinations");
   // do algebra
   /*log::info!("doing algebra");
@@ -172,7 +188,14 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
     /*if backtest_statistics.num_trades_per_day > 20.0 {
       continue;
     }*/
-    log::info!("{},{},{},{},{:?}", round(backtest_statistics.portfolio_value_change_percentage, 3), backtest_statistics.num_trades_per_day, round(backtest_settings.profit_limit_percentage, 5), round(backtest_settings.stop_loss_percentage, 5), indicator_settings);
+    log::info!(
+      "{},{},{},{},{:?}",
+      round(backtest_statistics.portfolio_value_change_percentage, 3),
+      backtest_statistics.num_trades_per_day,
+      round(backtest_settings.profit_limit_percentage, 5),
+      round(backtest_settings.stop_loss_percentage, 5),
+      indicator_settings
+    );
   }
   // print best combination results
   let highest_combination_result = &combination_results[0];
@@ -202,14 +225,17 @@ mod tests {
     };
     let stringified_trade_signal_snapshots = std::fs::read_to_string("./assets/trade-snapshots.json").unwrap();
     let trade_signal_snapshots: Vec<SignalSnapshot> = serde_json::from_str(&stringified_trade_signal_snapshots).unwrap();
-    let direction_changes = vec![
-      DirectionChange {
-        start_snapshot_index: 0,
-        end_snapshot_index: Some(trade_signal_snapshots.len() - 1)
-      }
-    ];
-    let direction_change_performance_snapshots = trade_performance::build_trade_performance_snapshots_from_direction_changes(&direction_changes, &trade_signal_snapshots, backtest_settings.slippage_percentage);
-    let backtest_result = signal_snapshots::backtest_trade_performance_snapshots(&direction_change_performance_snapshots[0], &trade_signal_snapshots, &backtest_settings);
+    let direction_changes = vec![DirectionChange {
+      start_snapshot_index: 0,
+      end_snapshot_index: Some(trade_signal_snapshots.len() - 1),
+    }];
+    let direction_change_performance_snapshots = trade_performance::build_trade_performance_snapshots_from_direction_changes(
+      &direction_changes,
+      &trade_signal_snapshots,
+      backtest_settings.slippage_percentage,
+    );
+    let backtest_result =
+      signal_snapshots::backtest_trade_performance_snapshots(&direction_change_performance_snapshots[0], &trade_signal_snapshots, &backtest_settings);
     // open at 9:40am
     assert_eq!(backtest_result.trade_entry_snapshot.candle.timestamp, 1674484800);
     assert_eq!(round(backtest_result.trade_entry_snapshot.candle.open, 2), 396.25);

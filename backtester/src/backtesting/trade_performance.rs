@@ -1,7 +1,11 @@
 use crate::math;
 use crate::structs::*;
 
-pub fn build_trade_performance_snapshots_from_direction_changes(direction_changes: &Vec<DirectionChange>, signal_snapshots: &Vec<SignalSnapshot>, slippage_percentage: f64) -> Vec<Vec<TradePerformanceSnapshot>> {
+pub fn build_trade_performance_snapshots_from_direction_changes(
+  direction_changes: &Vec<DirectionChange>,
+  signal_snapshots: &Vec<SignalSnapshot>,
+  slippage_percentage: f64,
+) -> Vec<Vec<TradePerformanceSnapshot>> {
   let mut results = vec![];
   for direction_change in direction_changes {
     let start_snapshot_index = direction_change.start_snapshot_index;
@@ -20,7 +24,11 @@ pub fn build_trade_performance_snapshots_from_direction_changes(direction_change
   return results;
 }
 
-pub fn build_trade_performance_from_trade_snapshots(trade_direction: Direction, signal_snapshots: &Vec<SignalSnapshot>, open_price: f64) -> Vec<TradePerformanceSnapshot> {
+pub fn build_trade_performance_from_trade_snapshots(
+  trade_direction: Direction,
+  signal_snapshots: &Vec<SignalSnapshot>,
+  open_price: f64,
+) -> Vec<TradePerformanceSnapshot> {
   // TODO: skip same candle we open trade on?
   return signal_snapshots
     .iter()
@@ -58,13 +66,16 @@ pub fn determine_trade_outcome<'a>(
   trade_end_performance_snapshot: &TradePerformanceSnapshot,
 ) -> (BacktestOutcome, TradePerformanceSnapshot) {
   if stop_loss_performance_snapshot.is_none() && profit_limit_performance_snapshot.is_none() {
-    return (BacktestOutcome::DirectionChange, trade_end_performance_snapshot.clone()); // TODO: get rid of clone?
+    return (BacktestOutcome::DirectionChange, trade_end_performance_snapshot.clone());
+    // TODO: get rid of clone?
   }
   if stop_loss_performance_snapshot.is_some() && profit_limit_performance_snapshot.is_none() {
-    return (BacktestOutcome::StopLoss, stop_loss_performance_snapshot.unwrap().clone()); // TODO: get rid of clone?
+    return (BacktestOutcome::StopLoss, stop_loss_performance_snapshot.unwrap().clone());
+    // TODO: get rid of clone?
   }
   if stop_loss_performance_snapshot.is_none() && profit_limit_performance_snapshot.is_some() {
-    return (BacktestOutcome::ProfitLimit, profit_limit_performance_snapshot.unwrap().clone()); // TODO: get rid of clone?
+    return (BacktestOutcome::ProfitLimit, profit_limit_performance_snapshot.unwrap().clone());
+    // TODO: get rid of clone?
   }
   // assumes both a potential stop loss and profit limit happened, check which came first time wise
   let stop_loss_performance_snapshot = stop_loss_performance_snapshot.unwrap();
@@ -74,6 +85,7 @@ pub fn determine_trade_outcome<'a>(
   if stop_loss_signal_snapshot.candle.timestamp <= profit_limit_signal_snapshot.candle.timestamp {
     return (BacktestOutcome::StopLoss, stop_loss_performance_snapshot.clone()); // TODO: get rid of clone?
   } else {
-    return (BacktestOutcome::ProfitLimit, profit_limit_performance_snapshot.clone()); // TODO: get rid of clone?
+    return (BacktestOutcome::ProfitLimit, profit_limit_performance_snapshot.clone());
+    // TODO: get rid of clone?
   }
 }

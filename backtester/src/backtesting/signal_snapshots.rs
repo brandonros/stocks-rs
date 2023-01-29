@@ -26,7 +26,11 @@ pub fn build_signal_snapshots_from_candles(strategy: &Strategy, indicator_settin
   return signal_snapshots;
 }
 
-pub fn backtest_trade_performance_snapshots(trade_performance_snapshots: &Vec<TradePerformanceSnapshot>, signal_snapshots: &Vec<SignalSnapshot>, backtest_settings: &BacktestSettings) -> BacktestResult {
+pub fn backtest_trade_performance_snapshots(
+  trade_performance_snapshots: &Vec<TradePerformanceSnapshot>,
+  signal_snapshots: &Vec<SignalSnapshot>,
+  backtest_settings: &BacktestSettings,
+) -> BacktestResult {
   // settings
   let slippage_percentage = backtest_settings.slippage_percentage;
   let profit_limit_percentage = backtest_settings.profit_limit_percentage;
@@ -84,11 +88,7 @@ pub fn backtest_trade_performance_snapshots(trade_performance_snapshots: &Vec<Tr
   } else if trade_outcome == BacktestOutcome::ProfitLimit {
     math::calculate_close_price_with_slippage(trade_direction, profit_limit_price, slippage_percentage)
   } else {
-    math::calculate_close_price_with_slippage(
-      trade_direction,
-      trade_exit_signal_snapshot.candle.close,
-      slippage_percentage,
-    )
+    math::calculate_close_price_with_slippage(trade_direction, trade_exit_signal_snapshot.candle.close, slippage_percentage)
   };
   // profit loss
   let profit_loss = math::calculate_profit_loss(trade_direction, open_price, exit_price);

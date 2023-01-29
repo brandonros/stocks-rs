@@ -3,9 +3,9 @@ mod structs;
 
 use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
 use chrono_tz::{Tz, US::Eastern};
+use common::database;
 use providers::Provider;
 use structs::*;
-use common::database;
 
 impl database::ToQuery for Candle {
   fn insert(&self) -> (&str, Vec<(&str, &dyn rusqlite::ToSql)>) {
