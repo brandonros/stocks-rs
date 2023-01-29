@@ -1,0 +1,28 @@
+[package]
+name = "thinkorswim"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# shutdown
+async-shutdown = "0.1"
+# async
+futures = { version = "0.3" }
+tokio = { version = "1", features = ["time", "sync", "net", "rt"] }
+# json
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+json_dotpath = { version = "1" }
+# logging
+log = { version = "0.4" }
+# uuid
+uuid = { version = "1", features = ["v4"] }
+# time
+chrono = "0.4"
+chrono-tz = "0.8"
+# iterator
+itertools = "0.10"
+# websocket client
+websocket-lite = { version = "0.5" }
+# options greeks
+black_scholes = "0.10.0"

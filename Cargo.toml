@@ -1,0 +1,13 @@
+[workspace]
+members = [
+  # libraries
+  "common",
+  "robinhood",
+  "thinkorswim",
+  "tradingview",
+  # binaries
+  "backtester",
+  "candle_scraper",
+  "options_scraper",
+  "quote_scraper",
+]
