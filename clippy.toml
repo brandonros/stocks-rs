@@ -1,2 +1,2 @@
-implicit_return = false
-needless_return = true
+deny = ["clippy::implicit_return"]
+allow = ["clippy::needless_return"]
