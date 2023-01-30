@@ -14,7 +14,7 @@ where
   return response;
 }
 
-pub async fn retry_wrapper<Fut, T>(known_errors: &[String], retry_delay_ms: u64, num_retries: usize, cb: &impl Fn() -> Fut) -> Result<T, String>
+pub async fn retry_wrapper<Fut, T>(known_errors: &[&str], retry_delay_ms: u64, num_retries: usize, cb: &impl Fn() -> Fut) -> Result<T, String>
 where
   Fut: Future<Output = Result<T, String>>,
 {
@@ -39,7 +39,7 @@ where
 }
 
 pub async fn retry_timeout_wrapper<Fut, T>(
-  known_errors: &[String],
+  known_errors: &[&str],
   retry_delay_ms: u64,
   num_retries: usize,
   timeout_ms: u64,

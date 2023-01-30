@@ -62,7 +62,7 @@ pub fn build_trade_performance_from_trade_snapshots(
 }
 
 pub fn determine_trade_outcome<'a>(
-  signal_snapshots: &Vec<SignalSnapshot>,
+  signal_snapshots: &[SignalSnapshot],
   stop_loss_performance_snapshot: Option<&TradePerformanceSnapshot>,
   profit_limit_performance_snapshot: Option<&TradePerformanceSnapshot>,
   trade_end_performance_snapshot: &TradePerformanceSnapshot,

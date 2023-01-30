@@ -24,7 +24,7 @@ impl VwapMvwapEmaCrossoverStrategy {
   pub fn build_signal_snapshots_from_candles(
     &self,
     indicator_settings: &VwapMvwapEmaCrossoverStrategyIndicatorSettings,
-    candles: &Vec<Candle>,
+    candles: &[Candle],
   ) -> Vec<SignalSnapshot> {
     // build indicators
     let mut vwap_indicator = VolumeWeightedAveragePrice::new();
