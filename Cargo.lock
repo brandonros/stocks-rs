@@ -117,9 +117,11 @@ dependencies = [
  "cached",
  "chrono",
  "chrono-tz",
+ "common",
  "dotenv",
  "linregress",
  "log",
+ "providers",
  "rayon",
  "reqwest",
  "rusqlite",
@@ -128,6 +130,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simple_logger",
+ "strategies",
  "ta",
  "tokio",
  "url",
@@ -299,6 +302,7 @@ dependencies = [
  "chrono-tz",
  "common",
  "log",
+ "providers",
  "reqwest",
  "rusqlite",
  "serde",
@@ -1393,6 +1397,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "providers"
+version = "0.1.0"
+dependencies = [
+ "async-recursion",
+ "async-shutdown",
+ "chrono",
+ "chrono-tz",
+ "common",
+ "cookie",
+ "futures",
+ "itertools",
+ "json_dotpath",
+ "log",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "uuid",
+ "websocket-lite",
+ "yahoo_finance_api",
+]
+
+[[package]]
 name = "ptr_meta"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1430,8 +1459,8 @@ dependencies = [
  "common",
  "cookie",
  "log",
+ "providers",
  "reqwest",
- "robinhood",
  "rusqlite",
  "serde",
  "serde_json",
@@ -1623,24 +1652,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "robinhood"
-version = "0.1.0"
-dependencies = [
- "async-recursion",
- "chrono",
- "chrono-tz",
- "common",
- "cookie",
- "futures",
- "itertools",
- "log",
- "reqwest",
- "serde",
- "serde_json",
- "url",
 ]
 
 [[package]]
@@ -1912,6 +1923,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
+name = "strategies"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "serde",
+ "serde_json",
+ "ta",
+]
+
+[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1954,25 +1975,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be55cf8942feac5c765c2c993422806843c9a9a45d4d5c407ad6dd2ea95eb9b6"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "thinkorswim"
-version = "0.1.0"
-dependencies = [
- "async-shutdown",
- "chrono",
- "chrono-tz",
- "common",
- "futures",
- "itertools",
- "json_dotpath",
- "log",
- "serde",
- "serde_json",
- "tokio",
- "uuid",
- "websocket-lite",
 ]
 
 [[package]]
@@ -2146,26 +2148,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24eb03ba0eab1fd845050058ce5e616558e8f8d8fca633e6b163fe25c797213a"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "tradingview"
-version = "0.1.0"
-dependencies = [
- "async-shutdown",
- "chrono",
- "chrono-tz",
- "common",
- "futures",
- "itertools",
- "json_dotpath",
- "lazy_static",
- "log",
- "regex",
- "serde",
- "serde_json",
- "tokio",
- "websocket-lite",
 ]
 
 [[package]]

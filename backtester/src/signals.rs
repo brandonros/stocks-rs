@@ -1,4 +1,5 @@
-use crate::structs::{Direction, DirectionChange, SignalSnapshot};
+use common::structs::*;
+use crate::structs::*;
 
 pub fn build_direction_changes_from_signal_snapshots(signal_snapshots: &Vec<SignalSnapshot>, warmed_up_index: usize) -> Vec<DirectionChange> {
   let mut trade_direction = Direction::Flat;

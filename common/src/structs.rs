@@ -3,6 +3,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::{database, json_time};
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+pub enum Direction {
+  Long,
+  Short,
+  Flat,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SignalSnapshot {
+  pub candle: Candle,
+  pub direction: Direction,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MinimalSnapshot {
   // categorize

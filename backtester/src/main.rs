@@ -3,15 +3,10 @@ use strategies::Strategy;
 
 mod backtesting;
 mod computing;
-mod database;
 mod dates;
-mod http_client;
 mod market_session;
 mod math;
-mod providers;
-mod scraping;
 mod signals;
-mod strategies;
 mod structs;
 
 fn main() {
@@ -25,18 +20,7 @@ fn main() {
   rt.block_on(async {
     let args: Vec<String> = std::env::args().collect();
     let command = args.get(1).unwrap();
-    if command == "scrape" {
-      let provider_name = args.get(2).unwrap();
-      let symbol = args.get(3).unwrap();
-      let resolution = args.get(4).unwrap();
-      let start_date = args.get(5).unwrap();
-      let end_date = args.get(6).unwrap();
-      let provider: Provider = provider_name.parse().unwrap();
-      let dates = dates::build_list_of_dates(&start_date, &end_date);
-      for date in dates {
-        scraping::scrape(symbol, resolution, &provider, &date).await;
-      }
-    } else if command == "backtest" {
+    if command == "backtest" {
       let provider_name = args.get(2).unwrap();
       let strategy_name = args.get(3).unwrap();
       let symbol = args.get(4).unwrap();

@@ -1,3 +1,5 @@
+use common::structs::*;
+
 use crate::math;
 use crate::structs::*;
 

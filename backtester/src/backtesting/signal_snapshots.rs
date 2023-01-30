@@ -1,5 +1,7 @@
+use strategies::*;
+use common::structs::*;
+
 use crate::math;
-use crate::strategies::*;
 use crate::structs::*;
 
 use super::trade_performance;

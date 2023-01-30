@@ -2,9 +2,8 @@
 members = [
   # libraries
   "common",
-  "robinhood",
-  "thinkorswim",
-  "tradingview",
+  "providers",
+  "strategies",
   # binaries
   "backtester",
   "candle_scraper",

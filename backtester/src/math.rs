@@ -1,4 +1,4 @@
-use crate::structs::Direction;
+use common::structs::*;
 
 #[allow(dead_code)]
 pub fn round(x: f64, decimals: u32) -> f64 {

@@ -1,19 +1,16 @@
+use common::{database::{self, Database}, structs::Candle};
+use providers::*;
+use strategies::*;
+
 use crate::{
-  database, market_session,
-  providers::Provider,
+  market_session,
   signals,
-  strategies::{
-    supertrend::{SupertrendStrategy, SupertrendStrategyIndicatorSettings},
-    vwap_mvwap_ema_crossover::{VwapMvwapEmaCrossoverStrategy, VwapMvwapEmaCrossoverStrategyIndicatorSettings},
-    Strategy, StrategyIndicatorSettings,
-  },
-  structs::Candle,
 };
 
 pub async fn compute(symbol: &str, resolution: &str, provider: &Provider, strategy: &Strategy, date: &str) {
   // connect to databse
-  let connection = database::get_database_connection(&format!("{:?}", provider));
-  database::init_tables(&connection);
+  let connection = Database::new(&format!("{:?}", provider));
+  connection.migrate("./schema/");
   // load indicator settings
   let warmed_up_index = match strategy {
     Strategy::Supertrend => 10,
@@ -38,7 +35,7 @@ pub async fn compute(symbol: &str, resolution: &str, provider: &Provider, strate
   let query = format!(
     "SELECT * FROM candles WHERE resolution = '{resolution}' AND symbol = '{symbol}' AND timestamp >= {from_timestamp} AND timestamp <= {to_timestamp}"
   );
-  let candles = database::get_rows_from_database::<Candle>(&connection, &query);
+  let candles = connection.get_rows_from_database::<Candle>(&query);
   // build snapshots from candles
   let signal_snapshots = match strategy {
     Strategy::Supertrend => {

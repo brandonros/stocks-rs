@@ -1,6 +1,7 @@
 use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
 use chrono_tz::{Tz, US::Eastern};
 use common::database;
+use providers::robinhood;
 
 struct QuoteSnapshot(robinhood::Quote);
 

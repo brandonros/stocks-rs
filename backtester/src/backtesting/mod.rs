@@ -1,14 +1,16 @@
-use std::{collections::HashMap, sync::atomic::AtomicUsize};
+use std::{collections::HashMap};
 
-use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use providers::Provider;
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use strategies::*;
 use tokio::io::AsyncWriteExt;
+use common::database::{Database};
+use common::structs::*;
 
 use crate::{
-  database, market_session,
-  math::round,
-  providers::Provider,
+  market_session,
+  math,
   signals,
-  strategies::{Strategy, StrategyIndicatorSettings, SupertrendStrategyIndicatorSettings},
   structs::*,
 };
 
@@ -19,8 +21,8 @@ pub mod trade_performance;
 
 pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strategy: &Strategy, dates: &Vec<&str>) {
   // connect to databse
-  let connection = database::get_database_connection(&format!("{:?}", provider));
-  database::init_tables(&connection);
+  let connection = Database::new(&format!("{:?}", provider));
+  connection.migrate("./schema/");
   // pull candles
   log::info!("pulling candles");
   let mut candles_dates_map: HashMap<&str, Vec<Candle>> = HashMap::new();
@@ -31,7 +33,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
     let query = format!(
       "SELECT * FROM candles WHERE resolution = '{resolution}' AND symbol = '{symbol}' AND timestamp >= {from_timestamp} AND timestamp <= {to_timestamp}"
     );
-    let candles = database::get_rows_from_database::<Candle>(&connection, &query);
+    let candles = connection.get_rows_from_database::<Candle>(&query);
     // TODO: check candles.len() based on timeframe? 1 = 390, 5 = 78, 15 = 26
     candles_dates_map.insert(date, candles);
   }
@@ -190,10 +192,10 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
     }*/
     log::info!(
       "{},{},{},{},{:?}",
-      round(backtest_statistics.portfolio_value_change_percentage, 3),
+      math::round(backtest_statistics.portfolio_value_change_percentage, 3),
       backtest_statistics.num_trades_per_day,
-      round(backtest_settings.profit_limit_percentage, 5),
-      round(backtest_settings.stop_loss_percentage, 5),
+      math::round(backtest_settings.profit_limit_percentage, 5),
+      math::round(backtest_settings.stop_loss_percentage, 5),
       indicator_settings
     );
   }

@@ -25,5 +25,5 @@ rusqlite = { git = "https://github.com/rusqlite/rusqlite.git", features = ["bund
 ta = { git = "https://github.com/brandonros/ta-rs", rev = "fd5a4e876e6f8da485895a5dac29f9e093fbc259" }
 # common
 common = { path = "../common" }
-# robinhood
-robinhood = { path = "../robinhood" }
+# providers
+providers = { path = "../providers" }

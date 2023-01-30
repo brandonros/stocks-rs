@@ -1,10 +1,6 @@
-mod providers;
-mod structs;
-
 use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
 use chrono_tz::{Tz, US::Eastern};
-use common::database;
-use providers::Provider;
+use common::{database, structs::*};
 
 fn get_regular_market_session_start_and_end(eastern_now: &DateTime<Tz>) -> (DateTime<Tz>, DateTime<Tz>) {
   let year = eastern_now.year();
@@ -21,6 +17,37 @@ async fn align_to_top_of_second() {
   tokio::time::sleep(tokio::time::Duration::from_millis(difference as u64)).await;
 }
 
+// TODO: convert this to a trait?
+async fn get_candles_by_provider_name(provider_name: &str, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>, String> {
+  match provider_name  {
+    "yahoo_finance" => {
+      let provider = providers::yahoo_finance::YahooFinance::new();
+      let result = provider.get_candles(symbol, resolution, from, to).await;
+      if result.is_err() {
+        return Err(format!("{:?}", result));
+      }
+      return Ok(result.unwrap());
+    },
+    "finnhub" => {
+      let provider = providers::finnhub::Finnhub::new();
+      let result = provider.get_candles(symbol, resolution, from, to).await;
+      if result.is_err() {
+        return Err(format!("{:?}", result));
+      }
+      return Ok(result.unwrap());
+    },
+    "polygon" => {
+      let provider = providers::polygon::Polygon::new();
+      let result = provider.get_candles(symbol, resolution, from, to).await;
+      if result.is_err() {
+        return Err(format!("{:?}", result));
+      }
+      return Ok(result.unwrap());
+    },
+    _ => unimplemented!()
+  }
+}
+
 fn main() {
   // logger
   simple_logger::SimpleLogger::new().env().init().unwrap();
@@ -30,7 +57,6 @@ fn main() {
   rt.block_on(async {
     // config
     let provider_name = "yahoo_finance";
-    let provider: Provider = provider_name.parse().unwrap();
     let symbol = "SPY";
     let resolution = "1";
     // open database
@@ -72,11 +98,7 @@ fn main() {
       }
       // get candle
       // TODO: support scraping historical candles?
-      let result = match provider {
-        Provider::Finnhub => providers::finnhub::get_candles(symbol, resolution, regular_market_start, regular_market_end).await,
-        Provider::YahooFinance => providers::yahoo_finance::get_candles(symbol, resolution, regular_market_start, regular_market_end).await,
-        Provider::Polygon => providers::polygon::get_candles(symbol, resolution, regular_market_start, regular_market_end).await,
-      };
+      let result = get_candles_by_provider_name(provider_name, symbol, resolution, regular_market_start, regular_market_end).await;
       if result.is_err() {
         log::error!("failed to get candles: {:?}", result);
         align_to_top_of_second().await;
