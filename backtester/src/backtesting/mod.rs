@@ -1,18 +1,13 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
+use common::database::Database;
+use common::structs::*;
 use providers::Provider;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use strategies::*;
 use tokio::io::AsyncWriteExt;
-use common::database::{Database};
-use common::structs::*;
 
-use crate::{
-  market_session,
-  math,
-  signals,
-  structs::*,
-};
+use crate::{market_session, math, signals, structs::*};
 
 pub mod combinations;
 pub mod signal_snapshots;

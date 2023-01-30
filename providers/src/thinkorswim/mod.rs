@@ -5,5 +5,5 @@ pub mod thinkorswim;
 
 pub use formatter::*;
 pub use helpers::*;
-pub use thinkorswim::*;
 pub use structs::*;
+pub use thinkorswim::*;

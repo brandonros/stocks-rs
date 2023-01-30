@@ -7,16 +7,16 @@ use common::structs::*;
 use structs::*;
 
 pub struct Polygon {
-  http_client: reqwest::Client
+  http_client: reqwest::Client,
 }
 
 impl Polygon {
   pub fn new() -> Polygon {
     return Polygon {
-      http_client: reqwest::Client::new()
+      http_client: reqwest::Client::new(),
     };
   }
-  
+
   pub async fn get_candles(&self, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>, String> {
     let from_timestamp = from.timestamp_millis();
     let to_timestamp = to.timestamp_millis();

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use common::structs::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum BacktestOutcome {

@@ -18,8 +18,14 @@ async fn align_to_top_of_second() {
 }
 
 // TODO: convert this to a trait?
-async fn get_candles_by_provider_name(provider_name: &str, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>, String> {
-  match provider_name  {
+async fn get_candles_by_provider_name(
+  provider_name: &str,
+  symbol: &str,
+  resolution: &str,
+  from: DateTime<Tz>,
+  to: DateTime<Tz>,
+) -> Result<Vec<Candle>, String> {
+  match provider_name {
     "yahoo_finance" => {
       let provider = providers::yahoo_finance::YahooFinance::new();
       let result = provider.get_candles(symbol, resolution, from, to).await;
@@ -27,7 +33,7 @@ async fn get_candles_by_provider_name(provider_name: &str, symbol: &str, resolut
         return Err(format!("{:?}", result));
       }
       return Ok(result.unwrap());
-    },
+    }
     "finnhub" => {
       let provider = providers::finnhub::Finnhub::new();
       let result = provider.get_candles(symbol, resolution, from, to).await;
@@ -35,7 +41,7 @@ async fn get_candles_by_provider_name(provider_name: &str, symbol: &str, resolut
         return Err(format!("{:?}", result));
       }
       return Ok(result.unwrap());
-    },
+    }
     "polygon" => {
       let provider = providers::polygon::Polygon::new();
       let result = provider.get_candles(symbol, resolution, from, to).await;
@@ -43,8 +49,8 @@ async fn get_candles_by_provider_name(provider_name: &str, symbol: &str, resolut
         return Err(format!("{:?}", result));
       }
       return Ok(result.unwrap());
-    },
-    _ => unimplemented!()
+    }
+    _ => unimplemented!(),
   }
 }
 

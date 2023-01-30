@@ -1,7 +1,7 @@
 use super::structs::*;
 
 use chrono::TimeZone;
-use chrono::{Utc};
+use chrono::Utc;
 use chrono_tz::US::Eastern;
 use common::{greeks, structs::*};
 use itertools::Itertools;

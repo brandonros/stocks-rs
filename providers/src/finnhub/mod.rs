@@ -7,16 +7,16 @@ use common::structs::*;
 use structs::*;
 
 pub struct Finnhub {
-  http_client: reqwest::Client
+  http_client: reqwest::Client,
 }
 
 impl Finnhub {
   pub fn new() -> Finnhub {
     return Finnhub {
-      http_client: reqwest::Client::new()
+      http_client: reqwest::Client::new(),
     };
   }
-  
+
   pub async fn get_candles(&self, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>, String> {
     log::info!("get_candles symbol = {} resolution = {} from = {} to = {}", symbol, resolution, from, to);
     let mut request_url = url::Url::parse("https://finnhub.io/api/v1/stock/candle").unwrap();

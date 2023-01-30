@@ -4,16 +4,16 @@ use common::structs::*;
 use yahoo_finance_api as yahoo;
 
 pub struct YahooFinance {
-  connector: yahoo::YahooConnector
+  connector: yahoo::YahooConnector,
 }
 
 impl YahooFinance {
   pub fn new() -> YahooFinance {
     return YahooFinance {
-      connector: yahoo::YahooConnector::new()
+      connector: yahoo::YahooConnector::new(),
     };
   }
-  
+
   pub async fn get_candles(&self, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>, String> {
     let utc_start = from.with_timezone(&Utc);
     let utc_end = to.with_timezone(&Utc);

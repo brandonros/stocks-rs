@@ -1,5 +1,5 @@
-use strategies::*;
 use common::structs::*;
+use strategies::*;
 
 use crate::math;
 use crate::structs::*;

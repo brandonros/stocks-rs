@@ -1,9 +1,9 @@
 pub mod finnhub;
 pub mod polygon;
-pub mod yahoo_finance;
 pub mod robinhood;
 pub mod thinkorswim;
 pub mod tradingview;
+pub mod yahoo_finance;
 
 use std::str::FromStr;
 
@@ -14,7 +14,7 @@ pub enum Provider {
   Polygon,
   Robinhood,
   ThinkOrSwim,
-  TradingView
+  TradingView,
 }
 
 impl FromStr for Provider {

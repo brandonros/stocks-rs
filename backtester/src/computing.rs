@@ -1,11 +1,11 @@
-use common::{database::{self, Database}, structs::Candle};
+use common::{
+  database::{self, Database},
+  structs::Candle,
+};
 use providers::*;
 use strategies::*;
 
-use crate::{
-  market_session,
-  signals,
-};
+use crate::{market_session, signals};
 
 pub async fn compute(symbol: &str, resolution: &str, provider: &Provider, strategy: &Strategy, date: &str) {
   // connect to databse
