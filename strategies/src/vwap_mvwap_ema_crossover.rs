@@ -34,8 +34,7 @@ impl VwapMvwapEmaCrossoverStrategy {
     let mut ema_slow_indicator = ExponentialMovingAverage::new(indicator_settings.ema_slow_periods).unwrap();
     // loop candles
     let mut snapshots: Vec<SignalSnapshot> = vec![];
-    for i in 0..candles.len() {
-      let candle = &candles[i];
+    for candle in candles {
       let open = candle.open;
       let high = candle.high;
       let low = candle.low;
@@ -62,5 +61,11 @@ impl VwapMvwapEmaCrossoverStrategy {
       });
     }
     return snapshots;
+  }
+}
+
+impl Default for VwapMvwapEmaCrossoverStrategy {
+  fn default() -> Self {
+     return Self::new();
   }
 }

@@ -21,8 +21,7 @@ impl SupertrendStrategy {
     let mut supertrend_indicator = Supertrend::new(indicator_settings.supertrend_periods, indicator_settings.supertrend_multiplier);
     // loop candles
     let mut snapshots: Vec<SignalSnapshot> = vec![];
-    for i in 0..candles.len() {
-      let candle = &candles[i];
+    for candle in candles {
       let open = candle.open;
       let high = candle.high;
       let low = candle.low;
@@ -37,5 +36,11 @@ impl SupertrendStrategy {
       });
     }
     return snapshots;
+  }
+}
+
+impl Default for SupertrendStrategy {
+  fn default() -> Self {
+     return Self::new();
   }
 }
