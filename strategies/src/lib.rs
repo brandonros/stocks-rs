@@ -63,8 +63,8 @@ pub fn build_signal_snapshots_from_candles(strategy: &Strategy, indicator_settin
 pub fn build_direction_changes_from_signal_snapshots(signal_snapshots: &Vec<SignalSnapshot>, warmed_up_index: usize) -> Vec<DirectionChange> {
   let mut trade_direction = Direction::Flat;
   let mut direction_changes: Vec<DirectionChange> = vec![];
-  for i in warmed_up_index..signal_snapshots.len() {
-    let current_direction = signal_snapshots[i].direction.to_owned();
+  for (i, signal_snapshot) in signal_snapshots.iter().enumerate().skip(warmed_up_index) {
+    let current_direction = signal_snapshot.direction.to_owned();
     if current_direction != trade_direction {
       // close any open trades
       if !direction_changes.is_empty() {

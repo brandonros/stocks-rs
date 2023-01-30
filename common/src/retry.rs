@@ -39,7 +39,7 @@ where
 }
 
 pub async fn retry_timeout_wrapper<Fut, T>(
-  known_errors: &Vec<String>,
+  known_errors: &[String],
   retry_delay_ms: u64,
   num_retries: usize,
   timeout_ms: u64,

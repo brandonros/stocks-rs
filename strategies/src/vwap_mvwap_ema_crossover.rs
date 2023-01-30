@@ -63,9 +63,3 @@ impl VwapMvwapEmaCrossoverStrategy {
     return snapshots;
   }
 }
-
-impl Default for VwapMvwapEmaCrossoverStrategy {
-  fn default() -> Self {
-     return Self::new();
-  }
-}

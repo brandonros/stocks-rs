@@ -38,9 +38,3 @@ impl SupertrendStrategy {
     return snapshots;
   }
 }
-
-impl Default for SupertrendStrategy {
-  fn default() -> Self {
-     return Self::new();
-  }
-}
