@@ -209,7 +209,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
 
 #[cfg(test)]
 mod tests {
-  use crate::{backtesting::*, math::round, structs::*};
+  use crate::{backtesting::*, math::round};
 
   #[test]
   fn should_match_quantconnect_results() {

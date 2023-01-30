@@ -21,7 +21,6 @@ impl Polygon {
     let from_timestamp = from.timestamp_millis();
     let to_timestamp = to.timestamp_millis();
     log::info!("get_candles symbol = {} resolution = {} from = {} to = {}", symbol, resolution, from, to);
-    let http_client = reqwest::Client::new();
     let polygon_api_token = std::env::var("POLYGON_API_TOKEN").unwrap();
     let mut request_url = url::Url::parse(&format!(
       "https://api.polygon.io/v2/aggs/ticker/{symbol}/range/{resolution}/minute/{from_timestamp}/{to_timestamp}"

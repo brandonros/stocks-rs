@@ -1,9 +1,9 @@
 use common::{
-  database::{self, Database},
+  database::{Database},
   structs::Candle,
 };
 use providers::*;
-use strategies::*;
+use strategies::{*, supertrend::*, vwap_mvwap_ema_crossover::*};
 
 use crate::{market_session, signals};
 
