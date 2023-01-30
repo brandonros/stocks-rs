@@ -1,5 +1,5 @@
 [target.'cfg(feature = "cargo-clippy")']
 rustflags = [
   "-Aclippy::needless_return",
-  "-Dclippy::implicit_return",
+  "-Wclippy::implicit_return",
 ]
