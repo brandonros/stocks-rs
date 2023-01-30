@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use crate::retry;
-use log::{debug, info};
 use reqwest::{
   header::{HeaderMap, HeaderName, HeaderValue},
   Client, Method,
@@ -14,7 +13,7 @@ pub async fn http_request_text(
   request_headers: &Vec<(String, String)>,
   payload: &Option<String>,
 ) -> Result<(HeaderMap, String), String> {
-  info!("http_request_text: method = {} url = {}", method_str, url);
+  log::info!("http_request_text: method = {} url = {}", method_str, url);
   let mut request_headers_map = HeaderMap::new();
   for (key, value) in request_headers {
     request_headers_map.insert(HeaderName::from_str(key).unwrap(), HeaderValue::from_str(value).unwrap());
@@ -38,7 +37,7 @@ pub async fn http_request_text(
   }
   let response_headers = response.headers().to_owned();
   let stringified_response_body = response.text().await.unwrap();
-  debug!("stringified_response_body = {}", stringified_response_body);
+  log::debug!("stringified_response_body = {}", stringified_response_body);
   return Ok((response_headers, stringified_response_body));
 }
 
@@ -52,7 +51,7 @@ pub async fn http_request_json<T>(
 where
   T: for<'de> serde::Deserialize<'de>,
 {
-  info!("http_request_json: method = {} url = {}", method_str, url);
+  log::info!("http_request_json: method = {} url = {}", method_str, url);
   let result = http_request_text(http_client, method_str, url, headers, payload).await;
   if result.is_err() {
     let err = result.unwrap_err();

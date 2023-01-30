@@ -10,7 +10,7 @@ fn main() {
   // load env vars
   dotenv::from_filename("./.env").ok().unwrap();
   // logger
-  simple_logger::SimpleLogger::new().env().init().unwrap();
+  simple_logger::init_with_level(log::Level::Info).unwrap();
   // runtime
   let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
   // run

@@ -51,7 +51,7 @@ async fn get_candles_by_provider_name(
 
 fn main() {
   // logger
-  simple_logger::SimpleLogger::new().env().init().unwrap();
+  simple_logger::init_with_level(log::Level::Info).unwrap();
   // runtime
   let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
   // run
@@ -112,6 +112,12 @@ fn main() {
         continue;
       }
       let most_recent_candle = &candles[candles.len() - 1];
+      // check age
+      let (current_candle_start, _current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, &eastern_now);
+      let current_candle_start_timestamp = current_candle_start.timestamp();
+      if most_recent_candle.timestamp != current_candle_start_timestamp {
+        log::warn!("did not scrape most recent candle?");
+      }
       // log
       log::info!("{:?}", most_recent_candle);
       // insert most recent candle into database

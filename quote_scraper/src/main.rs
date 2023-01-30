@@ -35,7 +35,7 @@ impl database::ToQuery for QuoteSnapshot {
 
 fn main() {
   // logger
-  simple_logger::SimpleLogger::new().env().init().unwrap();
+  simple_logger::init_with_level(log::Level::Info).unwrap();
   // runtime
   let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
   // run
@@ -88,9 +88,7 @@ fn main() {
       // get quote from robinhood
       let result = robinhood.get_quote(&access_token, &symbol).await;
       if result.is_err() {
-        log::error!("failed to get quote: {:?}", result);
-        utilities::aligned_sleep(1000).await;
-        continue;
+        panic!("failed to get quote {:?}", result);
       }
       let quote = result.unwrap();
       // log
