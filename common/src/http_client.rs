@@ -92,7 +92,7 @@ pub async fn http_request_text_with_timeout_and_retries(
   url: &str,
   headers: &Vec<(String, String)>,
   payload: &Option<String>,
-  known_errors: &Vec<String>,
+  known_errors: &[String],
   timeout_ms: u64,
   retry_delay_ms: u64,
   num_retries: usize,
