@@ -7,7 +7,7 @@ use log::info;
 use log::trace;
 use serde_json::Value;
 
-fn extract_prices_from_formatted_messages(formatted_messages: &Vec<TradingViewMessage>) -> (f64, f64) {
+fn extract_prices_from_formatted_messages(formatted_messages: &[TradingViewMessage]) -> (f64, f64) {
   // calculate mark from bid/ask
   let qsd_bid_ask_messages: Vec<TradingViewMessage> = formatted_messages
     .iter()
@@ -20,7 +20,7 @@ fn extract_prices_from_formatted_messages(formatted_messages: &Vec<TradingViewMe
     })
     .collect();
   assert!(qsd_bid_ask_messages.len() > 0);
-  let most_recent_bid_ask_message = qsd_bid_ask_messages.get(qsd_bid_ask_messages.len() - 1).unwrap();
+  let most_recent_bid_ask_message = qsd_bid_ask_messages.last().unwrap();
   let bid = most_recent_bid_ask_message.value.dot_get::<f64>("p.1.v.bid").unwrap().unwrap();
   let ask = most_recent_bid_ask_message.value.dot_get::<f64>("p.1.v.ask").unwrap().unwrap();
   let mark_price = (bid + ask) / 2.0;
@@ -37,7 +37,7 @@ fn extract_prices_from_formatted_messages(formatted_messages: &Vec<TradingViewMe
     })
     .collect();
   assert!(qsd_session_holidays_messages.len() > 0);
-  let most_recent_session_holidays_message = qsd_session_holidays_messages.get(qsd_session_holidays_messages.len() - 1).unwrap();
+  let most_recent_session_holidays_message = qsd_session_holidays_messages.last().unwrap();
   let last_price = most_recent_session_holidays_message.value.dot_get::<f64>("p.1.v.lp").unwrap().unwrap();
   //let extended_session_last_price = most_recent_session_holidays_message.value.dot_get::<f64>("p.1.v.rp").unwrap().unwrap(); // TODO: what does this stand for?
   return (mark_price, last_price);
@@ -115,7 +115,7 @@ pub async fn indicator_job_cb(
     last_price,
   );
   assert!(indicator_snapshots.len() > 0);
-  let most_recent_indicator_snapshot = indicator_snapshots.get(indicator_snapshots.len() - 1).unwrap();
+  let most_recent_indicator_snapshot = indicator_snapshots.last().unwrap();
   info!("most_recent_indicator_snapshot = {:?}", most_recent_indicator_snapshot);
   // return
   return most_recent_indicator_snapshot.to_owned();

@@ -7,7 +7,7 @@ use super::trade_performance;
 
 pub fn backtest_trade_performance_snapshots(
   trade_performance_snapshots: &Vec<TradePerformanceSnapshot>,
-  signal_snapshots: &Vec<SignalSnapshot>,
+  signal_snapshots: &[SignalSnapshot],
   backtest_settings: &BacktestSettings,
 ) -> BacktestResult {
   // settings

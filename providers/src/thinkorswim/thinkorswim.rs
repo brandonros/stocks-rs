@@ -193,11 +193,11 @@ impl ThinkOrSwim {
     let body = response.unwrap().dot_get::<Value>("payload.0.body").unwrap().unwrap();
     let authentication_status = body.dot_get::<String>("authenticationStatus");
     if authentication_status.is_err() {
-      return Err(format!("invalid response"));
+      return Err("invalid response".to_string());
     }
     let authentication_status = authentication_status.unwrap().unwrap();
     if authentication_status != "OK" {
-      return Err(format!("invalid response"));
+      return Err("invalid response".to_string());
     }
     return Ok(body);
   }

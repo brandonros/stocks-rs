@@ -5,7 +5,7 @@ use strategies::*;
 
 pub fn build_trade_performance_snapshots_from_direction_changes(
   direction_changes: &Vec<DirectionChange>,
-  signal_snapshots: &Vec<SignalSnapshot>,
+  signal_snapshots: &[SignalSnapshot],
   slippage_percentage: f64,
 ) -> Vec<Vec<TradePerformanceSnapshot>> {
   let mut results = vec![];
@@ -28,7 +28,7 @@ pub fn build_trade_performance_snapshots_from_direction_changes(
 
 pub fn build_trade_performance_from_trade_snapshots(
   trade_direction: Direction,
-  signal_snapshots: &Vec<SignalSnapshot>,
+  signal_snapshots: &[SignalSnapshot],
   open_price: f64,
 ) -> Vec<TradePerformanceSnapshot> {
   // TODO: skip same candle we open trade on?
@@ -61,7 +61,7 @@ pub fn build_trade_performance_from_trade_snapshots(
     .collect();
 }
 
-pub fn determine_trade_outcome<'a>(
+pub fn determine_trade_outcome(
   signal_snapshots: &[SignalSnapshot],
   stop_loss_performance_snapshot: Option<&TradePerformanceSnapshot>,
   profit_limit_performance_snapshot: Option<&TradePerformanceSnapshot>,
