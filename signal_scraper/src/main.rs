@@ -1,13 +1,14 @@
 use chrono::{Datelike, Utc, Weekday};
 use chrono_tz::US::Eastern;
 use common::database::Database;
-use common::{database, structs::QuoteSnapshot};
 use common::structs::Candle;
 use common::utilities;
+use common::{database, structs::QuoteSnapshot};
 use strategies::supertrend::{SupertrendStrategy, SupertrendStrategyIndicatorSettings};
 
 fn get_candles_from_database(connection: &Database, symbol: &str, resolution: &str, start_timestamp: i64, end_timestamp: i64) -> Vec<Candle> {
-  let candles_query = format!("
+  let candles_query = format!(
+    "
     with most_recent_candle_snapshots as (
       select max(scraped_at) as scraped_at, symbol, resolution, timestamp from candles
       where scraped_at >= {start_timestamp} and scraped_at <= {end_timestamp} and symbol = '{symbol}' and resolution = '{resolution}'
@@ -32,7 +33,8 @@ fn get_candles_from_database(connection: &Database, symbol: &str, resolution: &s
       and candles.resolution = '{resolution}'
       and candles.symbol = '{symbol}'
     ORDER BY candles.timestamp ASC
-  ");
+  "
+  );
   // TODO: filter out current partial candle and only look at 100% closed candles?
   // TODO: how to check if candle_scraper process crashed and data is stale/partial?
   let candles = connection.get_rows_from_database::<Candle>(&candles_query);
@@ -137,7 +139,16 @@ fn main() {
       // check snapshot age?
       let signal_snapshot_age = eastern_now_timestamp - most_recent_signal_snapshot.candle.timestamp;
       // log
-      log::info!("now = {} current_candle = {}-{} quote_age = {}s snapshot_age = {}s signal_snapshot = {:?} quote_snapshot = {:?}", eastern_now_timestamp, current_candle_start.timestamp(), current_candle_end.timestamp(), quote_age, signal_snapshot_age, most_recent_signal_snapshot, most_recent_quote_snapshot);
+      log::info!(
+        "now = {} current_candle = {}-{} quote_age = {}s snapshot_age = {}s signal_snapshot = {:?} quote_snapshot = {:?}",
+        eastern_now_timestamp,
+        current_candle_start.timestamp(),
+        current_candle_end.timestamp(),
+        quote_age,
+        signal_snapshot_age,
+        most_recent_signal_snapshot,
+        most_recent_quote_snapshot
+      );
       // TODO: insert into database?
       // TODO: paper trade based off this data?
       // sleep

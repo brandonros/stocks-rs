@@ -39,7 +39,9 @@ async fn get_candles_by_provider_name(
       // TODO: make format consistent?
       let auth_token = String::from("unauthorized_user_token");
       let provider = providers::tradingview::TradingView::new();
-      let result = provider.get_candles(auth_token, String::from(symbol), String::from(resolution), 1, String::from("regular"), 500).await;
+      let result = provider
+        .get_candles(auth_token, String::from(symbol), String::from(resolution), 1, String::from("regular"), 500)
+        .await;
       if result.is_err() {
         return Err(format!("{:?}", result));
       }

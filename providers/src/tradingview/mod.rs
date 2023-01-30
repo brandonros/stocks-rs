@@ -410,7 +410,15 @@ impl TradingView {
     }
   }
 
-  pub async fn get_candles(&self, auth_token: String, symbol: String, timeframe: String, range: usize, session_type: String, buffer_fill_delay_ms: u64) -> Result<Vec<Candle>, String> {
+  pub async fn get_candles(
+    &self,
+    auth_token: String,
+    symbol: String,
+    timeframe: String,
+    range: usize,
+    session_type: String,
+    buffer_fill_delay_ms: u64,
+  ) -> Result<Vec<Candle>, String> {
     let exchange = if symbol == "SPY" { String::from("AMEX") } else { panic!("TODO") };
     let now = chrono::Utc::now().timestamp();
     let quote_session_id = format!("qs_QUOTE_SESSIONID_{}", now);
@@ -472,7 +480,7 @@ impl TradingView {
           high,
           low,
           close,
-          volume: volume as i64
+          volume: volume as i64,
         };
       })
       .collect();

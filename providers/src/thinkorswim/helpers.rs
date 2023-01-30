@@ -129,13 +129,7 @@ pub async fn scrape_symbol_options_chain(
     .collect();
   info!("fetching {} series", filtered_series_names_and_expiration_dates.len());
   let futures = filtered_series_names_and_expiration_dates.into_iter().map(|(series_name, expiration_date)| {
-    return get_symbol_series_name_snapshots(
-      token.to_owned(),
-      symbol.to_owned(),
-      series_name,
-      expiration_date,
-      strike_price_threshold,
-    );
+    return get_symbol_series_name_snapshots(token.to_owned(), symbol.to_owned(), series_name, expiration_date, strike_price_threshold);
   });
   let concurrency = 16;
   let results = futures::stream::iter(futures).buffer_unordered(concurrency).collect::<Vec<_>>().await;
