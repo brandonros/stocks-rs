@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 pub fn process_du_study_messages(
-  du_study_messages: &Vec<TradingViewMessage>,
+  du_study_messages: &[TradingViewMessage],
   symbol: String,
   indicator_name: String,
   timeframe: String,
@@ -81,5 +81,5 @@ pub fn process_du_study_messages(
       };
     })
     .collect();
-  return results.to_owned();
+  return results;
 }

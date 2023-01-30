@@ -120,7 +120,7 @@ pub async fn scrape_symbol_options_chain(
   let filtered_series_names_and_expiration_dates: Vec<(String, String)> = series_names_and_expiration_dates
     .into_iter()
     .filter(|(_series_name, expiration_date)| {
-      let parsed_expiration_date = chrono::NaiveDateTime::parse_from_str(&expiration_date, "%Y-%m-%dT%H:%M:%SZ").unwrap();
+      let parsed_expiration_date = chrono::NaiveDateTime::parse_from_str(expiration_date, "%Y-%m-%dT%H:%M:%SZ").unwrap();
       let diff = parsed_expiration_date.signed_duration_since(now);
       let seconds_per_day = 86400.0;
       let days_to_expiration = diff.num_seconds() as f64 / seconds_per_day;
@@ -132,8 +132,8 @@ pub async fn scrape_symbol_options_chain(
     return get_symbol_series_name_snapshots(
       token.to_owned(),
       symbol.to_owned(),
-      series_name.to_owned(),
-      expiration_date.to_owned(),
+      series_name,
+      expiration_date,
       strike_price_threshold,
     );
   });

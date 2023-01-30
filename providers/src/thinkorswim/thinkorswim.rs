@@ -27,12 +27,11 @@ impl ThinkOrSwim {
     let shutdown = async_shutdown::Shutdown::new();
     // buffer
     let buffer_arc = Arc::new(Mutex::new(vec![]));
-    let local_buffer_arc = buffer_arc.clone();
     // channel
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<Value>();
     return ThinkOrSwim {
       rt_handle,
-      buffer_arc: local_buffer_arc,
+      buffer_arc,
       sender,
       receiver: Arc::new(Mutex::new(receiver)),
       shutdown,
@@ -81,7 +80,7 @@ impl ThinkOrSwim {
           return;
         }
         let message = message.as_text().unwrap();
-        let parsed_message: Value = serde_json::from_str(&message).unwrap();
+        let parsed_message: Value = serde_json::from_str(message).unwrap();
         // skip heartbeat
         if parsed_message.as_object().unwrap().get("heartbeat").is_some() {
           continue;
@@ -189,7 +188,7 @@ impl ThinkOrSwim {
     self.sender.send(message).unwrap();
     let response = self.wait_for_response_by_message_id(message_id, 5000).await;
     if response.is_none() {
-      return Err(format!("timed out"));
+      return Err(String::from("timed out"));
     }
     let body = response.unwrap().dot_get::<Value>("payload.0.body").unwrap().unwrap();
     let authentication_status = body.dot_get::<String>("authenticationStatus");
@@ -223,7 +222,7 @@ impl ThinkOrSwim {
     self.sender.send(message).unwrap();
     let response = self.wait_for_response_by_message_id(message_id, 5000).await;
     if response.is_none() {
-      return Err(format!("timed out"));
+      return Err(String::from("timed out"));
     }
     let response = response.unwrap();
     return Ok(response.dot_get::<Vec<OptionSeries>>("payload.0.body.series").unwrap().unwrap());
@@ -255,7 +254,7 @@ impl ThinkOrSwim {
     self.sender.send(message).unwrap();
     let response = self.wait_for_response_by_message_id(message_id, 5000).await;
     if response.is_none() {
-      return Err(format!("timed out"));
+      return Err(String::from("timed out"));
     }
     let response = response.unwrap();
     return Ok(response.dot_get::<OptionChain>("payload.0.body.optionSeries.0").unwrap().unwrap());
@@ -353,7 +352,7 @@ impl ThinkOrSwim {
       return header_type == "snapshot";
     });
     if initial_response.is_none() {
-      return Err(format!("failed to get option chain quote initial response"));
+      return Err(String::from("failed to get option chain quote initial response"));
     }
     // get patch response
     let patch_response = responses.iter().find(|response| {
@@ -451,7 +450,7 @@ impl ThinkOrSwim {
     self.sender.send(message).unwrap();
     let response = self.wait_for_response_by_message_id(message_id, 5000).await;
     if response.is_none() {
-      return Err(format!("timed out"));
+      return Err(String::from("timed out"));
     }
     let response = response.unwrap();
     return Ok(response.dot_get::<Quote>("payload.0.body.items.0").unwrap().unwrap());
@@ -481,7 +480,7 @@ impl ThinkOrSwim {
     self.sender.send(message).unwrap();
     let response = self.wait_for_response_by_message_id(message_id, 5000).await;
     if response.is_none() {
-      return Err(format!("timed out"));
+      return Err(String::from("timed out"));
     }
     let _response = response.unwrap();
     // TODO: map candles

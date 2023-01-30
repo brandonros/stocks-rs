@@ -3,7 +3,7 @@ use common::json_time;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Serialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Clone, Eq, PartialEq, Debug)]
 pub enum TradingViewMessageType {
   ServerInfo,
   Ping,

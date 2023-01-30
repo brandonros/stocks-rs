@@ -56,7 +56,7 @@ impl Robinhood {
         String::from("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"),
       ),
     ];
-    let url = format!("https://robinhood.com/stocks/SPY/");
+    let url = "https://robinhood.com/stocks/SPY/".to_string();
     // TODO: retries?
     let result = http_client::http_request_text(&self.http_client, "GET", &url, &request_headers, &None).await;
     if result.is_err() {
@@ -121,10 +121,10 @@ impl Robinhood {
     );
     let chain_id = self.get_chain_id_from_symbol(symbol);
     let mut base_url = url::Url::parse("https://api.robinhood.com/options/instruments/").unwrap();
-    base_url.query_pairs_mut().append_pair("chain_id", &chain_id);
-    base_url.query_pairs_mut().append_pair("expiration_dates", &expiration_date);
-    base_url.query_pairs_mut().append_pair("state", &state);
-    base_url.query_pairs_mut().append_pair("type", &r#type);
+    base_url.query_pairs_mut().append_pair("chain_id", chain_id);
+    base_url.query_pairs_mut().append_pair("expiration_dates", expiration_date);
+    base_url.query_pairs_mut().append_pair("state", state);
+    base_url.query_pairs_mut().append_pair("type", r#type);
     if cursor.is_some() {
       base_url.query_pairs_mut().append_pair("cursor", &cursor.unwrap());
     }
@@ -133,7 +133,7 @@ impl Robinhood {
       &self.http_client,
       "GET",
       &stringified_url,
-      &self.build_headers(&token),
+      &self.build_headers(token),
       &None,
       KNOWN_ERRORS,
       REQUEST_TIMEOUT_MS,
@@ -164,7 +164,7 @@ impl Robinhood {
     return Ok(results);
   }
 
-  pub async fn get_options_market_data_chunk(&self, token: &str, instrument_ids_chunk: &Vec<String>) -> Result<Vec<OptionMarketData>, String> {
+  pub async fn get_options_market_data_chunk(&self, token: &str, instrument_ids_chunk: &[String]) -> Result<Vec<OptionMarketData>, String> {
     info!("get_options_market_data_chunk");
     let joined_instrument_ids = instrument_ids_chunk.join(",");
     let mut base_url = url::Url::parse("https://api.robinhood.com/marketdata/options/").unwrap();
@@ -204,7 +204,7 @@ impl Robinhood {
     let chunk_size = 128;
     let instrument_ids_chunks: Vec<Vec<String>> = instrument_ids.chunks(chunk_size).map(|s| s.to_vec()).collect();
     let futures = instrument_ids_chunks.iter().map(|instrument_ids_chunk| {
-      return self.get_options_market_data_chunk(&token, instrument_ids_chunk);
+      return self.get_options_market_data_chunk(token, instrument_ids_chunk);
     });
     let concurrency = 4;
     let results = futures::stream::iter(futures).buffer_unordered(concurrency).collect::<Vec<_>>().await;
@@ -278,8 +278,8 @@ impl Robinhood {
     options.extend(call_option_series.options.to_owned());
     options.extend(put_option_series.options.to_owned());
     let mut options_quotes = vec![];
-    options_quotes.extend(call_option_series.options_quotes.to_owned());
-    options_quotes.extend(put_option_series.options_quotes.to_owned());
+    options_quotes.extend(call_option_series.options_quotes);
+    options_quotes.extend(put_option_series.options_quotes);
     return Ok(OptionSeries { options, options_quotes });
   }
 }

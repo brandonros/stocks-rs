@@ -84,7 +84,7 @@ pub async fn indicator_job_cb(
     study_id,
     series_parent_id,
     study_script_id,
-    &indicator_study_values,
+    indicator_study_values,
   );
   // sleep to allow websocket message buffer to fill
   let sleep_ms = 5000;

@@ -26,7 +26,7 @@ impl Finnhub {
     request_url.query_pairs_mut().append_pair("to", &format!("{}", to.timestamp()));
     let request_url = request_url.as_str().to_string();
     let finnhub_api_token = std::env::var("FINNHUB_API_TOKEN").unwrap();
-    let request_headers = vec![(String::from("X-Finnhub-Token"), String::from(finnhub_api_token))];
+    let request_headers = vec![(String::from("X-Finnhub-Token"), finnhub_api_token)];
     let result = http_client::http_request_json::<FinnhubStockCandlesResponse>(&self.http_client, "GET", &request_url, &request_headers, &None).await;
     if result.is_err() {
       return Err(result.err().unwrap());

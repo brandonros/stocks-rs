@@ -29,12 +29,11 @@ impl TradingView {
     let shutdown = async_shutdown::Shutdown::new();
     // buffer
     let buffer_arc = Arc::new(Mutex::new(vec![]));
-    let local_buffer_arc = buffer_arc.clone();
     // channel
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<Value>();
     return TradingView {
       rt_handle,
-      buffer_arc: local_buffer_arc,
+      buffer_arc,
       sender,
       receiver: Arc::new(Mutex::new(receiver)),
       shutdown,
@@ -100,7 +99,7 @@ impl TradingView {
         let ws_message_string = ws_message.as_text().unwrap();
         trace!("ws recv: {}", ws_message_string);
         let re = regex::Regex::new(r"~m~\d+~m~").unwrap();
-        for ws_payload_string in re.split(&ws_message_string).into_iter() {
+        for ws_payload_string in re.split(ws_message_string) {
           // skip empty?
           if ws_payload_string.len() == 0 {
             continue;
@@ -117,7 +116,7 @@ impl TradingView {
             }));
           } else {
             trace!("ws parse: {}", ws_payload_string);
-            let parsed_ws_payload: Value = serde_json::from_str(&ws_payload_string).unwrap();
+            let parsed_ws_payload: Value = serde_json::from_str(ws_payload_string).unwrap();
             local_buffer_arc.lock().await.push(parsed_ws_payload);
           }
         }
