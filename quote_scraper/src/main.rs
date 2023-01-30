@@ -1,6 +1,7 @@
 use chrono::{Datelike, Utc, Weekday};
-use chrono_tz::{US::Eastern};
+use chrono_tz::US::Eastern;
 use common::database;
+use common::utilities;
 use providers::robinhood;
 
 struct QuoteSnapshot(robinhood::structs::Quote);
@@ -32,12 +33,6 @@ impl database::ToQuery for QuoteSnapshot {
   }
 }
 
-async fn align_to_top_of_second() {
-  let now = Utc::now();
-  let difference = 1000 - (now.timestamp_millis() % 1000);
-  tokio::time::sleep(tokio::time::Duration::from_millis(difference as u64)).await;
-}
-
 fn main() {
   // logger
   simple_logger::SimpleLogger::new().env().init().unwrap();
@@ -66,13 +61,13 @@ fn main() {
       // before market start
       if now < regular_market_start {
         log::warn!("now < regular_market_start");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(1000).await;
         continue;
       }
       // after market end
       if now > regular_market_end {
         log::warn!("now >= regular_market_end");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(1000).await;
         continue;
       }
       // weekend
@@ -80,21 +75,21 @@ fn main() {
       let is_weekend = weekday == Weekday::Sat || weekday == Weekday::Sun;
       if is_weekend == true {
         log::warn!("is_weekend == true");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(1000).await;
         continue;
       }
       // holiday
       let is_holiday = false; // TODO
       if is_holiday == true {
         log::warn!("is_holiday == true");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(1000).await;
         continue;
       }
       // get quote from robinhood
       let result = robinhood.get_quote(&access_token, &symbol).await;
       if result.is_err() {
         log::error!("failed to get quote: {:?}", result);
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(1000).await;
         continue;
       }
       let quote = result.unwrap();
@@ -105,11 +100,11 @@ fn main() {
       let result = database.insert(&quote_snapshot);
       if result.is_err() {
         log::error!("failed to insert into database: {:?}", result);
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(1000).await;
         continue;
       }
       // sleep
-      align_to_top_of_second().await;
+      utilities::aligned_sleep(1000).await;
     }
   });
 }

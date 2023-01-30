@@ -1,13 +1,14 @@
 use super::structs::*;
 use async_shutdown::Shutdown;
+use common::structs::Candle;
 use futures::sink::SinkExt;
 use futures::stream::StreamExt;
 use json_dotpath::DotPaths;
 use log::{info, trace};
 use serde_json::Value;
-use tokio::runtime::Handle;
 use std::sync::Arc;
-use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver};
+use tokio::runtime::Handle;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 use websocket_lite::{Message, Opcode};
@@ -28,7 +29,7 @@ impl ThinkOrSwim {
     let buffer_arc = Arc::new(Mutex::new(vec![]));
     let local_buffer_arc = buffer_arc.clone();
     // channel
-    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<Value>();
+    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<Value>();
     return ThinkOrSwim {
       rt_handle,
       buffer_arc: local_buffer_arc,
@@ -454,5 +455,36 @@ impl ThinkOrSwim {
     }
     let response = response.unwrap();
     return Ok(response.dot_get::<Quote>("payload.0.body.items.0").unwrap().unwrap());
+  }
+
+  pub async fn get_candles(&self, symbol: String) -> Result<Vec<Candle>, String> {
+    info!("get_quote symbol = {}", symbol);
+    let message_id = format!("{}", Uuid::new_v4());
+    let message = serde_json::json!({
+      "payload": [
+        {
+          "header": {
+            "service": "chart",
+            "id": message_id,
+            "ver": 0
+          },
+          "params": {
+            "symbol": symbol,
+            "timeAggregation": "MIN1", // TODO: support different resolutions
+            "studies": [],
+            "range": "TODAY", // TODO: support different ranges
+            "extendedHours": false // TODO: support different hours?
+          }
+        }
+      ]
+    });
+    self.sender.send(message).unwrap();
+    let response = self.wait_for_response_by_message_id(message_id, 5000).await;
+    if response.is_none() {
+      return Err(format!("timed out"));
+    }
+    let response = response.unwrap();
+    // TODO: map candles
+    panic!("TODO");
   }
 }

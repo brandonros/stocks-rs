@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use common::database::Database;
 use common::math;
 use common::structs::*;
-use common::{database::Database};
 use providers::Provider;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use strategies::*;

@@ -1,6 +1,7 @@
 use super::formatter;
 use super::structs::*;
 use super::tradingview::*;
+use common::structs::Candle;
 use itertools::Itertools;
 use json_dotpath::DotPaths;
 use log::info;
@@ -69,7 +70,7 @@ pub async fn indicator_job_cb(
   //jwt::check_jwt_expiration(auth_token.to_owned()); // TODO: weird thing where their server accepts expired JWT?
   // kickoff
   let tradingview = TradingView::new();
-  tradingview.connect().await;
+  tradingview.connect().await.unwrap();
   tradingview.set_auth_token(&auth_token);
   // quote
   tradingview.create_quote_session(&quote_session_id);
@@ -121,9 +122,8 @@ pub async fn indicator_job_cb(
   return most_recent_indicator_snapshot.to_owned();
 }
 
-pub async fn candle_job_cb(symbol: String, timeframe: String, range: usize, session_type: String) -> Vec<Candle> {
+pub async fn get_candles(auth_token: String, symbol: String, timeframe: String, range: usize, session_type: String, buffer_fill_delay_ms: u64) -> Vec<Candle> {
   let exchange = if symbol == "SPY" { String::from("AMEX") } else { panic!("TODO") };
-  let auth_token = std::env::var("TRADINGVIEW_AUTH_TOKEN").unwrap();
   let now = chrono::Utc::now().timestamp();
   let quote_session_id = format!("qs_QUOTE_SESSIONID_{}", now);
   let chart_session_id = format!("cs_{}", now);
@@ -137,7 +137,7 @@ pub async fn candle_job_cb(symbol: String, timeframe: String, range: usize, sess
   //jwt::check_jwt_expiration(auth_token.to_owned()); // TODO: weird thing where their server accepts expired JWT?
   // kickoff
   let tradingview = TradingView::new();
-  tradingview.connect().await;
+  tradingview.connect().await.unwrap();
   tradingview.set_auth_token(&auth_token);
   // quote
   tradingview.create_quote_session(&quote_session_id);
@@ -147,8 +147,7 @@ pub async fn candle_job_cb(symbol: String, timeframe: String, range: usize, sess
   tradingview.resolve_symbol(&chart_session_id, chart_symbol_id, &study_symbol_settings);
   tradingview.create_series(&chart_session_id, series_parent_id, series_id, chart_symbol_id, &timeframe, range);
   // sleep to allow websocket message buffer to fill
-  let sleep_ms = 5000;
-  tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(buffer_fill_delay_ms)).await;
   // shutdown
   tradingview.shutdown.shutdown();
   // format message
@@ -175,15 +174,15 @@ pub async fn candle_job_cb(symbol: String, timeframe: String, range: usize, sess
       let candle_timestamp = candle_timestamp as i64;
       let volume = volume as usize;
       return Candle {
-        source: String::from("tradingview"),
+        //source: String::from("tradingview"), // TODO: sources on candles?
         symbol: symbol.to_owned(),
-        timeframe: timeframe.to_owned(),
-        candle_timestamp: chrono::NaiveDateTime::from_timestamp_opt(candle_timestamp, 0).unwrap(),
+        resolution: timeframe.to_owned(),
+        timestamp: candle_timestamp,
         open,
         high,
         low,
         close,
-        volume,
+        volume: volume as i64
       };
     })
     .collect();

@@ -5,7 +5,13 @@ use json_dotpath::DotPaths;
 use log::{debug, trace, warn};
 use serde_json::Value;
 use std::sync::Arc;
-use tokio::{sync::{mpsc::{UnboundedSender, UnboundedReceiver}, Mutex}, runtime::Handle};
+use tokio::{
+  runtime::Handle,
+  sync::{
+    mpsc::{UnboundedReceiver, UnboundedSender},
+    Mutex,
+  },
+};
 use websocket_lite::{Message, Opcode};
 
 pub struct TradingView {
@@ -24,7 +30,7 @@ impl TradingView {
     let buffer_arc = Arc::new(Mutex::new(vec![]));
     let local_buffer_arc = buffer_arc.clone();
     // channel
-    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<Value>();
+    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<Value>();
     return TradingView {
       rt_handle,
       buffer_arc: local_buffer_arc,
@@ -34,12 +40,16 @@ impl TradingView {
     };
   }
 
-  pub async fn connect(&self) {
+  pub async fn connect(&self) -> Result<(), String> {
     // websocket
     let url = String::from("wss://data.tradingview.com/socket.io/websocket");
     let mut ws_builder = websocket_lite::ClientBuilder::new(&url).unwrap();
     ws_builder.add_header(String::from("Origin"), String::from("https://s.tradingview.com"));
-    let ws = ws_builder.async_connect().await.unwrap();
+    let connect_result = ws_builder.async_connect().await;
+    if connect_result.is_err() {
+      return Err(format!("{:?}", connect_result.err()));
+    }
+    let ws = connect_result.unwrap();
     let (mut ws_sink, mut ws_stream) = ws.split::<Message>();
     // mpsc recv -> websocket send thread
     let local_receiver = self.receiver.clone();
@@ -112,6 +122,7 @@ impl TradingView {
         }
       }
     });
+    return Ok(());
   }
 
   pub fn set_auth_token(&self, auth_token: &str) {

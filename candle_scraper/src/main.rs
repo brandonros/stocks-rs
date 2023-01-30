@@ -1,12 +1,6 @@
 use chrono::{DateTime, Datelike, Utc, Weekday};
 use chrono_tz::{Tz, US::Eastern};
-use common::{database, structs::*};
-
-async fn align_to_top_of_second() {
-  let now = Utc::now();
-  let difference = 1000 - (now.timestamp_millis() % 1000);
-  tokio::time::sleep(tokio::time::Duration::from_millis(difference as u64)).await;
-}
+use common::{database, structs::*, utilities};
 
 // TODO: convert this to a trait?
 async fn get_candles_by_provider_name(
@@ -41,6 +35,12 @@ async fn get_candles_by_provider_name(
       }
       return Ok(result.unwrap());
     }
+    "tradingview" => {
+      // TODO: error handling and String -> &str
+      let auth_token = String::from("unauthorized_user_token");
+      let candles = providers::tradingview::helpers::get_candles(auth_token, String::from(symbol), String::from(resolution), 1, String::from("regular"), 500).await;
+      Ok(candles)
+    }
     _ => unimplemented!(),
   }
 }
@@ -53,7 +53,7 @@ fn main() {
   // run
   rt.block_on(async {
     // config
-    let provider_name = "yahoo_finance";
+    let provider_name = "tradingview";
     let symbol = "SPY";
     let resolution = "1";
     // open database
@@ -69,13 +69,13 @@ fn main() {
       // before market start
       if now < regular_market_start {
         log::warn!("now < regular_market_start");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(5000).await;
         continue;
       }
       // after market end
       if now > regular_market_end {
         log::warn!("now >= regular_market_end");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(5000).await;
         continue;
       }
       // weekend
@@ -83,14 +83,14 @@ fn main() {
       let is_weekend = weekday == Weekday::Sat || weekday == Weekday::Sun;
       if is_weekend == true {
         log::warn!("is_weekend == true");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(5000).await;
         continue;
       }
       // holiday
       let is_holiday = false; // TODO
       if is_holiday == true {
         log::warn!("is_holiday == true");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(5000).await;
         continue;
       }
       // get candle
@@ -98,13 +98,13 @@ fn main() {
       let result = get_candles_by_provider_name(provider_name, symbol, resolution, regular_market_start, regular_market_end).await;
       if result.is_err() {
         log::error!("failed to get candles: {:?}", result);
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(5000).await;
         continue;
       }
       let candles = result.unwrap();
       if candles.len() == 0 {
         log::warn!("no candles");
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(5000).await;
         continue;
       }
       let most_recent_candle = &candles[candles.len() - 1];
@@ -114,12 +114,12 @@ fn main() {
       let result = database.insert(most_recent_candle);
       if result.is_err() {
         log::error!("failed to insert into database: {:?}", result);
-        align_to_top_of_second().await;
+        utilities::aligned_sleep(5000).await;
         continue;
       }
       // TODO: store more than just the most recent candle?
       // sleep
-      align_to_top_of_second().await;
+      utilities::aligned_sleep(5000).await;
     }
   });
 }

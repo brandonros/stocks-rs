@@ -6,3 +6,4 @@ pub mod market_session;
 pub mod math;
 pub mod retry;
 pub mod structs;
+pub mod utilities;

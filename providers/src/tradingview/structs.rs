@@ -50,17 +50,3 @@ pub struct IndicatorSnapshot {
   pub underlying_mark_price: f64,
   pub underlying_last_price: f64,
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Candle {
-  pub source: String,
-  pub symbol: String,
-  pub timeframe: String,
-  #[serde(with = "json_time")]
-  pub candle_timestamp: NaiveDateTime,
-  pub open: f64,
-  pub high: f64,
-  pub low: f64,
-  pub close: f64,
-  pub volume: usize,
-}
