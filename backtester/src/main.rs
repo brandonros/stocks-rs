@@ -26,7 +26,7 @@ fn main() {
       let end_date = args.get(7).unwrap();
       let provider: Provider = provider_name.parse().unwrap();
       let strategy: Strategy = strategy_name.parse().unwrap();
-      let dates = dates::build_list_of_dates(&start_date, &end_date);
+      let dates = dates::build_list_of_dates(start_date, end_date);
       let dates: Vec<&str> = dates.iter().map(|date| return date.as_str()).collect();
       backtesting::backtest(symbol, resolution, &provider, &strategy, &dates).await;
     } else if command == "compute" {
@@ -37,7 +37,7 @@ fn main() {
       let date = args.get(6).unwrap();
       let provider: Provider = provider_name.parse().unwrap();
       let strategy: Strategy = strategy_name.parse().unwrap();
-      computing::compute(symbol, resolution, &provider, &strategy, &date).await;
+      computing::compute(symbol, resolution, &provider, &strategy, date).await;
     } else {
       panic!("unknown command");
     }

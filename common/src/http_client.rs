@@ -31,7 +31,7 @@ pub async fn http_request_text(
   }
   let response = response.unwrap();
   let response_status = response.status().as_u16();
-  let is_2xx = response_status >= 200 && response_status <= 299;
+  let is_2xx = (200..=299).contains(&response_status);
   if is_2xx == false {
     return Err(format!("invalid response status: {}", response.status().as_u16()));
   }
@@ -58,7 +58,7 @@ where
     return Err(err);
   }
   let (_response_headers, stringified_response_body) = result.unwrap();
-  let response_body: T = if stringified_response_body.len() == 0 {
+  let response_body: T = if stringified_response_body.is_empty() {
     serde_json::from_str("null").unwrap() // watch out for empty response body
   } else {
     serde_json::from_str(&stringified_response_body).unwrap()
@@ -81,7 +81,7 @@ where
   T: for<'de> serde::Deserialize<'de>,
 {
   let cb = || {
-    return http_request_json::<T>(http_client, method_str, url, &headers, &payload);
+    return http_request_json::<T>(http_client, method_str, url, headers, payload);
   };
   return retry::retry_timeout_wrapper(known_errors, retry_delay_ms, num_retries, timeout_ms, &cb).await;
 }
@@ -98,7 +98,7 @@ pub async fn http_request_text_with_timeout_and_retries(
   num_retries: usize,
 ) -> Result<(HeaderMap, String), String> {
   let cb = || {
-    return http_request_text(http_client, method_str, url, &headers, &payload);
+    return http_request_text(http_client, method_str, url, headers, payload);
   };
   return retry::retry_timeout_wrapper(known_errors, retry_delay_ms, num_retries, timeout_ms, &cb).await;
 }

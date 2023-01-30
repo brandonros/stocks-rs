@@ -31,9 +31,9 @@ impl FromStr for Strategy {
 
   fn from_str(s: &str) -> Result<Strategy, ()> {
     match s {
-      "supertrend" => Ok(Strategy::Supertrend),
-      "vwap_mvwap_ema_crossover" => Ok(Strategy::VwapMvwapEmaCrossover),
-      _ => Err(()),
+      "supertrend" => return Ok(Strategy::Supertrend),
+      "vwap_mvwap_ema_crossover" => return Ok(Strategy::VwapMvwapEmaCrossover),
+      _ => return Err(()),
     }
   }
 }
@@ -64,10 +64,10 @@ pub fn build_direction_changes_from_signal_snapshots(signal_snapshots: &Vec<Sign
   let mut trade_direction = Direction::Flat;
   let mut direction_changes: Vec<DirectionChange> = vec![];
   for i in warmed_up_index..signal_snapshots.len() {
-    let current_direction = (&signal_snapshots[i].direction).to_owned();
+    let current_direction = signal_snapshots[i].direction.to_owned();
     if current_direction != trade_direction {
       // close any open trades
-      if direction_changes.len() != 0 {
+      if !direction_changes.is_empty() {
         let last_direction_change_index = direction_changes.len() - 1;
         let mut last_direction_change = &mut direction_changes[last_direction_change_index];
         last_direction_change.end_snapshot_index = Some(i);

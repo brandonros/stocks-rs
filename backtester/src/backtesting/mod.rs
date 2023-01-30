@@ -37,7 +37,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   // calculate num dates due to weird holiday issue for statistics trades/num_days
   let num_dates = dates.iter().fold(0, |prev, date| {
     let date_candles = candles_dates_map.get(date).unwrap();
-    if date_candles.len() == 0 {
+    if date_candles.is_empty() {
       //log::warn!("skipping {} due to no candles", date);
       return prev;
     }
@@ -61,7 +61,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   for indicator_setting_combination in &indicator_setting_combinations {
     for date in dates {
       let date_candles = candles_dates_map.get(date).unwrap();
-      if date_candles.len() == 0 {
+      if date_candles.is_empty() {
         //log::warn!("skipping {} due to no candles", date);
         continue;
       }
@@ -96,7 +96,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
       for date in dates {
         // get date candles
         let date_candles = candles_dates_map.get(date).unwrap();
-        if date_candles.len() == 0 {
+        if date_candles.is_empty() {
           //log::warn!("skipping {} due to no candles", date);
           continue;
         }
@@ -110,12 +110,12 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
           panic!("TODO");
         }
         let mut backtest_date_results = vec![];
-        for (index, direction_change) in direction_changes.into_iter().enumerate() {
+        for (index, direction_change) in direction_changes.iter().enumerate() {
           let start_snapshot_index = direction_change.start_snapshot_index;
           let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
           let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..end_snapshot_index].to_vec(); // TODO: get rid of clone?
                                                                                                              // watch out for erroneous end of day direction change
-          if trade_signal_snapshots.len() == 0 {
+          if trade_signal_snapshots.is_empty() {
             //log::warn!("trade_snapshots.len() == 0 {:?}", direction_change);
             continue;
           }

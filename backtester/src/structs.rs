@@ -1,14 +1,14 @@
 use common::structs::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum BacktestOutcome {
   ProfitLimit,
   StopLoss,
   DirectionChange,
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum BacktestMode {
   SingleEntry,
   MultipleEntry,

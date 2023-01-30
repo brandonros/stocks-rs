@@ -86,7 +86,7 @@ fn main() {
         continue;
       }
       // get quote from robinhood
-      let result = robinhood.get_quote(&access_token, &symbol).await;
+      let result = robinhood.get_quote(&access_token, symbol).await;
       if result.is_err() {
         panic!("failed to get quote {:?}", result);
       }

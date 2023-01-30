@@ -114,7 +114,7 @@ fn main() {
       // get most recent signal signal from candles
       let strategy = SupertrendStrategy::new();
       let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
-      if signal_snapshots.len() == 0 {
+      if signal_snapshots.is_empty() {
         log::warn!("signal_snapshots.len() == 0");
         utilities::aligned_sleep(1000).await;
         continue;
@@ -122,7 +122,7 @@ fn main() {
       let most_recent_signal_snapshot = &signal_snapshots[signal_snapshots.len() - 1];
       // get current quote
       let quote_snapshots = get_quote_snapshots_from_database(&connection, symbol, regular_market_start_timestamp, eastern_now_timestamp);
-      if quote_snapshots.len() == 0 {
+      if quote_snapshots.is_empty() {
         log::warn!("quote_snapshots.len() == 0");
         utilities::aligned_sleep(1000).await;
         continue;

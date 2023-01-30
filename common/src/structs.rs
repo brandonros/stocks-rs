@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{database, json_time};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
   Long,
   Short,

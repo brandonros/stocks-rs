@@ -106,7 +106,7 @@ fn main() {
         continue;
       }
       let candles = result.unwrap();
-      if candles.len() == 0 {
+      if candles.is_empty() {
         log::warn!("no candles");
         utilities::aligned_sleep(5000).await;
         continue;

@@ -7,7 +7,7 @@ pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
   let from = Eastern.from_local_datetime(&parsed_from).unwrap();
   let to = Eastern.from_local_datetime(&parsed_to).unwrap();
   let mut results = vec![];
-  let mut pointer = from.clone();
+  let mut pointer = from;
   while pointer.timestamp() <= to.timestamp() {
     let datetime = Eastern.timestamp_opt(pointer.timestamp(), 0).unwrap();
     let is_weekend = datetime.weekday() == Weekday::Sat || datetime.weekday() == Weekday::Sun;

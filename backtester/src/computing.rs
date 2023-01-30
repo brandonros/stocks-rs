@@ -53,7 +53,7 @@ pub async fn compute(symbol: &str, resolution: &str, provider: &Provider, strate
   // calculate direction changes
   let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
   // dump latest direction change
-  if direction_changes.len() == 0 {
+  if direction_changes.is_empty() {
     log::warn!("no direction changes yet");
     return;
   }

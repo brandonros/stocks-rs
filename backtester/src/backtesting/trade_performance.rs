@@ -13,14 +13,14 @@ pub fn build_trade_performance_snapshots_from_direction_changes(
     let start_snapshot_index = direction_change.start_snapshot_index;
     let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
     let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..end_snapshot_index].to_vec(); // TODO: get rid of clone?
-    if trade_signal_snapshots.len() == 0 {
+    if trade_signal_snapshots.is_empty() {
       // log::warn!("trade_signal_snapshots.len() == 0");
       continue;
     }
     let first_trade_snapshot = &trade_signal_snapshots[0];
     let trade_direction = first_trade_snapshot.direction;
     let open_price = math::calculate_open_price_with_slippage(trade_direction, first_trade_snapshot.candle.open, slippage_percentage);
-    let trade_performance_snapshots = build_trade_performance_from_trade_snapshots(trade_direction, &trade_signal_snapshots, open_price);
+    let trade_performance_snapshots = build_trade_performance_from_trade_snapshots(trade_direction, trade_signal_snapshots, open_price);
     results.push(trade_performance_snapshots);
   }
   return results;
