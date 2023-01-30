@@ -6,6 +6,7 @@ members = [
   "strategies",
   # binaries
   "backtester",
+  "signal_backtester",
   "candle_scraper",
   "options_scraper",
   "quote_scraper",
