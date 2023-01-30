@@ -47,7 +47,7 @@ fn main() {
     // init database tables
     database.migrate("./schema/");
     // get robinhood access token
-    let robinhood = robinhood::robinhood::Robinhood::new();
+    let robinhood = robinhood::Robinhood::new();
     let result = robinhood.get_logged_out_access_token().await;
     if result.is_err() {
       panic!("failed to get logged out access token: {:?}", result);

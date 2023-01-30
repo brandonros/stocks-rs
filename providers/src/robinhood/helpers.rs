@@ -1,11 +1,10 @@
 use chrono::Utc;
 use futures::StreamExt;
 
-use super::robinhood;
-use super::structs::*;
+use super::{structs::*, Robinhood};
 
 pub async fn get_expiration_dates(token: &str, symbol: &str) -> Result<Vec<String>, String> {
-  let robinhood = robinhood::Robinhood::new();
+  let robinhood = Robinhood::new();
   let chain_id = robinhood.get_chain_id_from_symbol(symbol);
   let chain = robinhood.get_chain(token, chain_id).await;
   if chain.is_err() {
@@ -22,7 +21,7 @@ pub async fn scrape_symbol_expiration_date_options_chain(
   expiration_date: &str,
   strike_price_threshold: f64,
 ) -> Result<OptionSeries, String> {
-  let robinhood = robinhood::Robinhood::new();
+  let robinhood = Robinhood::new();
   let quote = robinhood.get_quote(token, symbol).await;
   if quote.is_err() {
     return Err(format!("{:?}", quote));

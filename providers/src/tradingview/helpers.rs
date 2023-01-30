@@ -1,6 +1,6 @@
 use super::formatter;
 use super::structs::*;
-use super::tradingview::*;
+use super::TradingView;
 use itertools::Itertools;
 use json_dotpath::DotPaths;
 use log::info;

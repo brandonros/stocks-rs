@@ -1,5 +1,5 @@
 use super::structs::*;
-use super::thinkorswim;
+use super::ThinkOrSwim;
 
 use chrono::Utc;
 use futures::StreamExt;
@@ -17,7 +17,7 @@ pub async fn get_symbol_series_name_snapshots(
     symbol, series_name, expiration_date
   );
   // init tos
-  let tos = thinkorswim::ThinkOrSwim::new();
+  let tos = ThinkOrSwim::new();
   // connect
   tos.connect().await;
   // heartbeat
@@ -75,7 +75,7 @@ example:
 */
 pub async fn get_series_names_and_expiration_dates(token: String, symbol: String) -> Result<Vec<(String, String)>, String> {
   // init tos
-  let tos = thinkorswim::ThinkOrSwim::new();
+  let tos = ThinkOrSwim::new();
   // connect
   tos.connect().await;
   // heartbeat
