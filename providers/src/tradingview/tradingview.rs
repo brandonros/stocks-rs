@@ -5,23 +5,36 @@ use json_dotpath::DotPaths;
 use log::{debug, trace, warn};
 use serde_json::Value;
 use std::sync::Arc;
-use tokio::sync::{mpsc::UnboundedSender, Mutex};
+use tokio::{sync::{mpsc::{UnboundedSender, UnboundedReceiver}, Mutex}, runtime::Handle};
 use websocket_lite::{Message, Opcode};
 
 pub struct TradingView {
+  pub rt_handle: Handle,
   pub buffer_arc: Arc<Mutex<Vec<Value>>>,
   pub sender: UnboundedSender<Value>,
+  pub receiver: Arc<Mutex<UnboundedReceiver<Value>>>,
   pub shutdown: Shutdown,
 }
 
 impl TradingView {
-  pub async fn new() -> TradingView {
+  pub fn new() -> TradingView {
     let rt_handle = tokio::runtime::Handle::current();
     let shutdown = async_shutdown::Shutdown::new();
     // buffer
     let buffer_arc = Arc::new(Mutex::new(vec![]));
+    let local_buffer_arc = buffer_arc.clone();
     // channel
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<Value>();
+    return TradingView {
+      rt_handle,
+      buffer_arc: local_buffer_arc,
+      sender,
+      receiver: Arc::new(Mutex::new(receiver)),
+      shutdown,
+    };
+  }
+
+  pub async fn connect(&self) {
     // websocket
     let url = String::from("wss://data.tradingview.com/socket.io/websocket");
     let mut ws_builder = websocket_lite::ClientBuilder::new(&url).unwrap();
@@ -29,9 +42,11 @@ impl TradingView {
     let ws = ws_builder.async_connect().await.unwrap();
     let (mut ws_sink, mut ws_stream) = ws.split::<Message>();
     // mpsc recv -> websocket send thread
-    let local_shutdown = shutdown.clone();
-    let _mpsc_recv_handle = rt_handle.spawn(async move {
+    let local_receiver = self.receiver.clone();
+    let local_shutdown = self.shutdown.clone();
+    let _mpsc_recv_handle = self.rt_handle.spawn(async move {
       loop {
+        let mut receiver = local_receiver.lock().await;
         let wrapped_mpsc_recv = local_shutdown.wrap_cancel(receiver.recv()).await;
         if wrapped_mpsc_recv.is_none() {
           warn!("mpsc_receiver: ws closing?");
@@ -56,9 +71,9 @@ impl TradingView {
       }
     });
     // websocket recv -> push to buffer thread
-    let local_shutdown = shutdown.clone();
-    let local_buffer_arc = buffer_arc.clone();
-    let _ws_recv_handle = rt_handle.spawn(async move {
+    let local_shutdown = self.shutdown.clone();
+    let local_buffer_arc = self.buffer_arc.clone();
+    let _ws_recv_handle = self.rt_handle.spawn(async move {
       loop {
         let wrapped_ws_recv = local_shutdown.wrap_cancel(ws_stream.next()).await;
         if wrapped_ws_recv.is_none() {
@@ -97,12 +112,6 @@ impl TradingView {
         }
       }
     });
-    let local_buffer_arc = buffer_arc.clone();
-    return TradingView {
-      buffer_arc: local_buffer_arc,
-      sender,
-      shutdown,
-    };
   }
 
   pub fn set_auth_token(&self, auth_token: &str) {

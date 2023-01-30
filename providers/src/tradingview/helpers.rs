@@ -68,7 +68,8 @@ pub async fn indicator_job_cb(
   // check JWT expiration
   //jwt::check_jwt_expiration(auth_token.to_owned()); // TODO: weird thing where their server accepts expired JWT?
   // kickoff
-  let tradingview = TradingView::new().await;
+  let tradingview = TradingView::new();
+  tradingview.connect().await;
   tradingview.set_auth_token(&auth_token);
   // quote
   tradingview.create_quote_session(&quote_session_id);
@@ -135,7 +136,8 @@ pub async fn candle_job_cb(symbol: String, timeframe: String, range: usize, sess
   // check JWT expiration
   //jwt::check_jwt_expiration(auth_token.to_owned()); // TODO: weird thing where their server accepts expired JWT?
   // kickoff
-  let tradingview = TradingView::new().await;
+  let tradingview = TradingView::new();
+  tradingview.connect().await;
   tradingview.set_auth_token(&auth_token);
   // quote
   tradingview.create_quote_session(&quote_session_id);

@@ -5,34 +5,50 @@ use futures::stream::StreamExt;
 use json_dotpath::DotPaths;
 use log::{info, trace};
 use serde_json::Value;
+use tokio::runtime::Handle;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 use websocket_lite::{Message, Opcode};
 
 pub struct ThinkOrSwim {
+  pub rt_handle: Handle,
   pub buffer_arc: Arc<Mutex<Vec<Value>>>,
   pub sender: UnboundedSender<Value>,
+  pub receiver: Arc<Mutex<UnboundedReceiver<Value>>>,
   pub shutdown: Shutdown,
 }
 
 impl ThinkOrSwim {
-  pub async fn new() -> ThinkOrSwim {
+  pub fn new() -> ThinkOrSwim {
     let rt_handle = tokio::runtime::Handle::current();
     let shutdown = async_shutdown::Shutdown::new();
     // buffer
     let buffer_arc = Arc::new(Mutex::new(vec![]));
+    let local_buffer_arc = buffer_arc.clone();
     // channel
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<Value>();
+    return ThinkOrSwim {
+      rt_handle,
+      buffer_arc: local_buffer_arc,
+      sender,
+      receiver: Arc::new(Mutex::new(receiver)),
+      shutdown,
+    };
+  }
+
+  pub async fn connect(&self) {
     // connect
     let url = "wss://services.thinkorswim.com/Services/WsJson";
     let ws_stream = websocket_lite::ClientBuilder::new(url).unwrap().async_connect().await.unwrap();
     let (mut ws_sink, mut ws_stream) = ws_stream.split();
     // mpsc recv -> websocket send thread
-    let local_shutdown = shutdown.clone();
-    rt_handle.spawn(async move {
+    let local_receiver = self.receiver.clone();
+    let local_shutdown = self.shutdown.clone();
+    self.rt_handle.spawn(async move {
       loop {
+        let mut receiver = local_receiver.lock().await;
         let wrapped_recv = local_shutdown.wrap_cancel(receiver.recv()).await;
         if wrapped_recv.is_none() {
           info!("ws closing");
@@ -51,9 +67,9 @@ impl ThinkOrSwim {
       }
     });
     // websocket recv -> push to buffer thread
-    let local_shutdown = shutdown.clone();
-    let local_buffer_arc = buffer_arc.clone();
-    rt_handle.spawn(async move {
+    let local_shutdown = self.shutdown.clone();
+    let local_buffer_arc = self.buffer_arc.clone();
+    self.rt_handle.spawn(async move {
       loop {
         let wrapped_send = local_shutdown.wrap_cancel(ws_stream.next()).await;
         if wrapped_send.is_none() {
@@ -73,12 +89,6 @@ impl ThinkOrSwim {
         local_buffer_arc.lock().await.push(parsed_message);
       }
     });
-    let local_buffer_arc = buffer_arc.clone();
-    return ThinkOrSwim {
-      buffer_arc: local_buffer_arc,
-      sender,
-      shutdown,
-    };
   }
 
   pub async fn pluck_response_by_callback(&self, mut cb: impl FnMut(&Value) -> bool) -> Option<Value> {

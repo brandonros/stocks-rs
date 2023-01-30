@@ -17,7 +17,9 @@ pub async fn get_symbol_series_name_snapshots(
     symbol, series_name, expiration_date
   );
   // init tos
-  let tos = thinkorswim::ThinkOrSwim::new().await;
+  let tos = thinkorswim::ThinkOrSwim::new();
+  // connect
+  tos.connect().await;
   // heartbeat
   tos.init_heartbeat().await;
   // login
@@ -73,7 +75,9 @@ example:
 */
 pub async fn get_series_names_and_expiration_dates(token: String, symbol: String) -> Result<Vec<(String, String)>, String> {
   // init tos
-  let tos = thinkorswim::ThinkOrSwim::new().await;
+  let tos = thinkorswim::ThinkOrSwim::new();
+  // connect
+  tos.connect().await;
   // heartbeat
   tos.init_heartbeat().await;
   // login
