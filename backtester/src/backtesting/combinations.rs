@@ -1,7 +1,7 @@
 use crate::structs::*;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 use rust_decimal_macros::dec;
-use strategies::{*, supertrend::*, vwap_mvwap_ema_crossover::*};
+use strategies::{supertrend::*, vwap_mvwap_ema_crossover::*, *};
 
 fn build_decimal_range(min: Decimal, max: Decimal, step: Decimal) -> Vec<Decimal> {
   let mut pointer = min;

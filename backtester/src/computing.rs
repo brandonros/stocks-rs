@@ -1,9 +1,6 @@
-use common::{
-  database::{Database},
-  structs::Candle,
-};
+use common::{database::Database, structs::Candle};
 use providers::*;
-use strategies::{*, supertrend::*, vwap_mvwap_ema_crossover::*};
+use strategies::{supertrend::*, vwap_mvwap_ema_crossover::*, *};
 
 use crate::{market_session, signals};
 

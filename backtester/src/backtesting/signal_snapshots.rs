@@ -1,5 +1,5 @@
 use common::structs::*;
-use strategies::{*, supertrend::*, vwap_mvwap_ema_crossover::*};
+use strategies::{supertrend::*, vwap_mvwap_ema_crossover::*, *};
 
 use crate::math;
 use crate::structs::*;
