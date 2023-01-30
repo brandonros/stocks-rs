@@ -458,7 +458,7 @@ impl ThinkOrSwim {
   }
 
   pub async fn get_candles(&self, symbol: String) -> Result<Vec<Candle>, String> {
-    info!("get_quote symbol = {}", symbol);
+    info!("get_candles symbol = {}", symbol);
     let message_id = format!("{}", Uuid::new_v4());
     let message = serde_json::json!({
       "payload": [
@@ -483,7 +483,7 @@ impl ThinkOrSwim {
     if response.is_none() {
       return Err(format!("timed out"));
     }
-    let response = response.unwrap();
+    let _response = response.unwrap();
     // TODO: map candles
     panic!("TODO");
   }

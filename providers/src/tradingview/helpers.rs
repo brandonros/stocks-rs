@@ -1,7 +1,6 @@
 use super::formatter;
 use super::structs::*;
 use super::tradingview::*;
-use common::structs::Candle;
 use itertools::Itertools;
 use json_dotpath::DotPaths;
 use log::info;
@@ -120,73 +119,4 @@ pub async fn indicator_job_cb(
   info!("most_recent_indicator_snapshot = {:?}", most_recent_indicator_snapshot);
   // return
   return most_recent_indicator_snapshot.to_owned();
-}
-
-pub async fn get_candles(auth_token: String, symbol: String, timeframe: String, range: usize, session_type: String, buffer_fill_delay_ms: u64) -> Vec<Candle> {
-  let exchange = if symbol == "SPY" { String::from("AMEX") } else { panic!("TODO") };
-  let now = chrono::Utc::now().timestamp();
-  let quote_session_id = format!("qs_QUOTE_SESSIONID_{}", now);
-  let chart_session_id = format!("cs_{}", now);
-  let formatted_symbol = format!("{}:{}", exchange, symbol);
-  let study_symbol_settings = format!("={}", serde_json::json!({ "session": session_type, "symbol": formatted_symbol }).to_string()); // TODO: adjustment splits / currency ID?
-  let quote_symbol_settings = format!("={}", serde_json::json!({ "session": session_type, "symbol": formatted_symbol }).to_string());
-  let series_parent_id = "series_parent_id";
-  let chart_symbol_id = "symbol_id";
-  let series_id = "series_id";
-  // check JWT expiration
-  //jwt::check_jwt_expiration(auth_token.to_owned()); // TODO: weird thing where their server accepts expired JWT?
-  // kickoff
-  let tradingview = TradingView::new();
-  tradingview.connect().await.unwrap();
-  tradingview.set_auth_token(&auth_token);
-  // quote
-  tradingview.create_quote_session(&quote_session_id);
-  tradingview.add_quote_session_symbol(&quote_session_id, &quote_symbol_settings);
-  // indicator
-  tradingview.chart_create_session(&chart_session_id);
-  tradingview.resolve_symbol(&chart_session_id, chart_symbol_id, &study_symbol_settings);
-  tradingview.create_series(&chart_session_id, series_parent_id, series_id, chart_symbol_id, &timeframe, range);
-  // sleep to allow websocket message buffer to fill
-  tokio::time::sleep(tokio::time::Duration::from_millis(buffer_fill_delay_ms)).await;
-  // shutdown
-  tradingview.shutdown.shutdown();
-  // format message
-  let formatted_messages = tradingview.format_buffer_messages().await;
-  trace!("{}", serde_json::to_string(&formatted_messages).unwrap());
-  // extract + format candles
-  let timescale_update_message = formatted_messages
-    .iter()
-    .find(|message| {
-      return message.message_type == TradingViewMessageType::TimescaleUpdate;
-    })
-    .unwrap();
-  let s = timescale_update_message.value.dot_get::<Vec<Value>>("p.1.series_parent_id.s").unwrap().unwrap();
-  let formatted_candles: Vec<Candle> = s
-    .iter()
-    .map(|value| {
-      let candle_timestamp = value.dot_get::<f64>("v.0").unwrap().unwrap();
-      let open = value.dot_get::<f64>("v.1").unwrap().unwrap();
-      let high = value.dot_get::<f64>("v.2").unwrap().unwrap();
-      let low = value.dot_get::<f64>("v.3").unwrap().unwrap();
-      let close = value.dot_get::<f64>("v.4").unwrap().unwrap();
-      let volume = value.dot_get::<f64>("v.5").unwrap().unwrap();
-      // handle weird .0 float problem from tradingview by casting to integers
-      let candle_timestamp = candle_timestamp as i64;
-      let volume = volume as usize;
-      return Candle {
-        //source: String::from("tradingview"), // TODO: sources on candles?
-        symbol: symbol.to_owned(),
-        resolution: timeframe.to_owned(),
-        timestamp: candle_timestamp,
-        open,
-        high,
-        low,
-        close,
-        volume: volume as i64
-      };
-    })
-    .collect();
-  trace!("{}", serde_json::to_string(&formatted_candles).unwrap());
-  // return
-  return formatted_candles;
 }

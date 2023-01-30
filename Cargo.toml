@@ -9,4 +9,5 @@ members = [
   "candle_scraper",
   "options_scraper",
   "quote_scraper",
+  "signal_scraper"
 ]

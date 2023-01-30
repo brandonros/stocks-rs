@@ -109,3 +109,12 @@ impl database::ToQuery for Candle {
     return (query, params.to_vec());
   }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct QuoteSnapshot {
+  pub symbol: String,
+  pub scraped_at: i64,
+  pub ask_price: f64,
+  pub bid_price: f64,
+  pub last_trade_price: f64,
+}
