@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, TimeZone, NaiveDateTime};
+use chrono::{DateTime, Datelike, NaiveDateTime, TimeZone};
 use chrono_tz::{Tz, US::Eastern};
 
 pub fn get_regular_market_session_start_and_end(eastern_now: &DateTime<Tz>) -> (DateTime<Tz>, DateTime<Tz>) {

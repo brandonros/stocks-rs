@@ -1,5 +1,3 @@
-use chrono::{NaiveDateTime, TimeZone};
-use chrono_tz::US::Eastern;
 use common::{database::Database, structs::Candle};
 use providers::*;
 use strategies::{supertrend::*, vwap_mvwap_ema_crossover::*, *};

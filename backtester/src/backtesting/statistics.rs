@@ -1,5 +1,5 @@
-use common::math;
 use crate::structs::*;
+use common::math;
 
 pub fn calculate_backtest_statistics(num_dates: usize, backtest_results: &Vec<BacktestResult>) -> BacktestStatistics {
   let num_trades = backtest_results.len();

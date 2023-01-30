@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
-use common::{database::Database, market_session};
-use common::structs::*;
 use common::math;
+use common::structs::*;
+use common::{database::Database};
 use providers::Provider;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use strategies::*;
 use tokio::io::AsyncWriteExt;
 
-use crate::{structs::*};
+use crate::structs::*;
 
 pub mod combinations;
 pub mod signal_snapshots;
@@ -210,7 +210,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
 
 #[cfg(test)]
 mod tests {
-  use crate::{backtesting::*};
+  use crate::backtesting::*;
 
   #[test]
   fn should_match_quantconnect_results() {

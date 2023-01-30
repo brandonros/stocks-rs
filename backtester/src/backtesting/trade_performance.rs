@@ -1,7 +1,7 @@
-use common::structs::*;
-use common::math;
-use strategies::*;
 use crate::structs::*;
+use common::math;
+use common::structs::*;
+use strategies::*;
 
 pub fn build_trade_performance_snapshots_from_direction_changes(
   direction_changes: &Vec<DirectionChange>,

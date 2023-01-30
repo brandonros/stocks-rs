@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
+use chrono::{DateTime, Datelike, Utc, Weekday};
 use chrono_tz::{Tz, US::Eastern};
 use common::{database, structs::*};
 
