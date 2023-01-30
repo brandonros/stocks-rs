@@ -38,15 +38,6 @@ async fn align_to_top_of_second() {
   tokio::time::sleep(tokio::time::Duration::from_millis(difference as u64)).await;
 }
 
-fn get_regular_market_session_start_and_end(eastern_now: &DateTime<Tz>) -> (DateTime<Tz>, DateTime<Tz>) {
-  let year = eastern_now.year();
-  let month = eastern_now.month();
-  let day = eastern_now.day();
-  let regular_market_start = Eastern.with_ymd_and_hms(year, month, day, 9, 30, 0).unwrap(); // 9:30:00am
-  let regular_market_end = Eastern.with_ymd_and_hms(year, month, day, 15, 59, 59).unwrap(); // 3:59:59pm
-  return (regular_market_start, regular_market_end);
-}
-
 fn main() {
   // logger
   simple_logger::SimpleLogger::new().env().init().unwrap();
@@ -71,7 +62,7 @@ fn main() {
       // check time
       let now = Utc::now();
       let eastern_now = now.with_timezone(&Eastern);
-      let (regular_market_start, regular_market_end) = get_regular_market_session_start_and_end(&eastern_now);
+      let (regular_market_start, regular_market_end) = common::market_session::get_regular_market_session_start_and_end(&eastern_now);
       // before market start
       if now < regular_market_start {
         log::warn!("now < regular_market_start");

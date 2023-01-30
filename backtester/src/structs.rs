@@ -14,12 +14,6 @@ pub enum BacktestMode {
   MultipleEntry,
 }
 
-#[derive(Serialize, Clone, Debug)]
-pub struct DirectionChange {
-  pub start_snapshot_index: usize,
-  pub end_snapshot_index: Option<usize>,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Candle {
   pub timestamp: i64,

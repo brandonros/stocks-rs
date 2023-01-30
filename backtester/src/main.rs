@@ -4,9 +4,6 @@ use strategies::Strategy;
 mod backtesting;
 mod computing;
 mod dates;
-mod market_session;
-mod math;
-mod signals;
 mod structs;
 
 fn main() {

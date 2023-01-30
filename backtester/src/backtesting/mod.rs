@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
-use common::database::Database;
+use common::{database::Database, market_session};
 use common::structs::*;
+use common::math;
 use providers::Provider;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use strategies::*;
 use tokio::io::AsyncWriteExt;
 
-use crate::{market_session, math, signals, structs::*};
+use crate::{structs::*};
 
 pub mod combinations;
 pub mod signal_snapshots;
@@ -22,7 +23,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   log::info!("pulling candles");
   let mut candles_dates_map: HashMap<&str, Vec<Candle>> = HashMap::new();
   for date in dates {
-    let (from, to) = market_session::get_regular_market_start_end_from_string(date);
+    let (from, to) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
     let from_timestamp = from.timestamp();
     let to_timestamp = to.timestamp();
     let query = format!(
@@ -64,10 +65,10 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
         //log::warn!("skipping {} due to no candles", date);
         continue;
       }
-      let signal_snapshots = signal_snapshots::build_signal_snapshots_from_candles(strategy, indicator_setting_combination, date_candles);
+      let signal_snapshots = strategies::build_signal_snapshots_from_candles(strategy, indicator_setting_combination, date_candles);
       let warmed_up_index = 10;
       let slippage_percentage = 0.00025; // TODO: do not hardcode
-      let direction_changes = signals::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
+      let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
       let direction_changes_performance_snapshots =
         trade_performance::build_trade_performance_snapshots_from_direction_changes(&direction_changes, &signal_snapshots, slippage_percentage);
       let key = format!("{}:{:?}:{:?}:{}", date, strategy, indicator_setting_combination, warmed_up_index);
@@ -209,7 +210,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
 
 #[cfg(test)]
 mod tests {
-  use crate::{backtesting::*, math::round};
+  use crate::{backtesting::*};
 
   #[test]
   fn should_match_quantconnect_results() {
@@ -235,24 +236,24 @@ mod tests {
       signal_snapshots::backtest_trade_performance_snapshots(&direction_change_performance_snapshots[0], &trade_signal_snapshots, &backtest_settings);
     // open at 9:40am
     assert_eq!(backtest_result.trade_entry_snapshot.candle.timestamp, 1674484800);
-    assert_eq!(round(backtest_result.trade_entry_snapshot.candle.open, 2), 396.25);
+    assert_eq!(math::round(backtest_result.trade_entry_snapshot.candle.open, 2), 396.25);
     // add slippage to candle open
-    assert_eq!(round(backtest_result.open_price, 2), 396.35);
+    assert_eq!(math::round(backtest_result.open_price, 2), 396.35);
     // calculate profit limit + stop loss (without slippage? slippage deducted at exit price?)
-    assert_eq!(round(backtest_result.profit_limit_price, 2), 397.34);
-    assert_eq!(round(backtest_result.stop_loss_price, 2), 395.85);
+    assert_eq!(math::round(backtest_result.profit_limit_price, 2), 397.34);
+    assert_eq!(math::round(backtest_result.stop_loss_price, 2), 395.85);
     // determine outcome
     assert_eq!(backtest_result.outcome, BacktestOutcome::ProfitLimit);
     // determine exit from profit limit price with slippage
-    assert_eq!(round(backtest_result.exit_price, 2), 397.24);
+    assert_eq!(math::round(backtest_result.exit_price, 2), 397.24);
     // exit by 9:47am
     assert_eq!(backtest_result.trade_exit_snapshot.candle.timestamp, 1674485220);
     // determine profit loss
-    assert_eq!(round(backtest_result.profit_loss, 2), 0.89);
-    assert_eq!(round(backtest_result.profit_loss_percentage, 5), 0.00225);
+    assert_eq!(math::round(backtest_result.profit_loss, 2), 0.89);
+    assert_eq!(math::round(backtest_result.profit_loss_percentage, 5), 0.00225);
     // determine peak
-    assert_eq!(round(backtest_result.trade_peak_profit_loss_percentage, 5), 0.01454);
+    assert_eq!(math::round(backtest_result.trade_peak_profit_loss_percentage, 5), 0.01454);
     // determine trough
-    assert_eq!(round(backtest_result.trade_trough_profit_loss_percentage, 5), -0.00118);
+    assert_eq!(math::round(backtest_result.trade_trough_profit_loss_percentage, 5), -0.00118);
   }
 }

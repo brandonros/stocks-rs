@@ -1,4 +1,4 @@
-use common::structs::*;
+use super::structs::*;
 
 #[allow(dead_code)]
 pub fn round(x: f64, decimals: u32) -> f64 {

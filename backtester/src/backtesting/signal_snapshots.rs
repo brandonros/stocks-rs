@@ -1,32 +1,10 @@
 use common::structs::*;
 use strategies::{supertrend::*, vwap_mvwap_ema_crossover::*, *};
 
-use crate::math;
+use common::math;
 use crate::structs::*;
 
 use super::trade_performance;
-
-pub fn build_signal_snapshots_from_candles(strategy: &Strategy, indicator_settings: &StrategyIndicatorSettings, candles: &Vec<Candle>) -> Vec<SignalSnapshot> {
-  let signal_snapshots = match strategy {
-    Strategy::Supertrend => {
-      let strategy = SupertrendStrategy::new();
-      let indicator_settings = match indicator_settings {
-        StrategyIndicatorSettings::Supertrend(indicator_settings) => indicator_settings,
-        _ => unreachable!(),
-      };
-      strategy.build_signal_snapshots_from_candles(indicator_settings, candles)
-    }
-    Strategy::VwapMvwapEmaCrossover => {
-      let strategy = VwapMvwapEmaCrossoverStrategy::new();
-      let indicator_settings = match indicator_settings {
-        StrategyIndicatorSettings::VwapMvwapEmaCrossover(indicator_settings) => indicator_settings,
-        _ => unreachable!(),
-      };
-      strategy.build_signal_snapshots_from_candles(indicator_settings, candles)
-    }
-  };
-  return signal_snapshots;
-}
 
 pub fn backtest_trade_performance_snapshots(
   trade_performance_snapshots: &Vec<TradePerformanceSnapshot>,

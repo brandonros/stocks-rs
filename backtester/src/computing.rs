@@ -1,8 +1,8 @@
+use chrono::{NaiveDateTime, TimeZone};
+use chrono_tz::US::Eastern;
 use common::{database::Database, structs::Candle};
 use providers::*;
 use strategies::{supertrend::*, vwap_mvwap_ema_crossover::*, *};
-
-use crate::{market_session, signals};
 
 pub async fn compute(symbol: &str, resolution: &str, provider: &Provider, strategy: &Strategy, date: &str) {
   // connect to databse
@@ -26,7 +26,7 @@ pub async fn compute(symbol: &str, resolution: &str, provider: &Provider, strate
     }),
   };
   // pull candles
-  let (from, to) = market_session::get_regular_market_start_end_from_string(date);
+  let (from, to) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
   let from_timestamp = from.timestamp();
   let to_timestamp = to.timestamp();
   let query = format!(
@@ -53,7 +53,7 @@ pub async fn compute(symbol: &str, resolution: &str, provider: &Provider, strate
     }
   };
   // calculate direction changes
-  let direction_changes = signals::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
+  let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
   // dump latest direction change
   if direction_changes.len() == 0 {
     log::warn!("no direction changes yet");
