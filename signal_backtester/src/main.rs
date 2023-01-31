@@ -88,7 +88,7 @@ fn main() {
     while pointer <= regular_market_end {
       let eastern_now = &pointer;
       let eastern_now_timestamp = eastern_now.timestamp();
-      let (current_candle_start, current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, &eastern_now);
+      let (current_candle_start, current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, eastern_now);
       let current_candle_start_timestamp = current_candle_start.timestamp();
       let current_candle_end_timestamp = current_candle_end.timestamp();
       // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle
@@ -102,14 +102,14 @@ fn main() {
       let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
       if signal_snapshots.is_empty() {
         log::warn!("{eastern_now_timestamp}: signal_snapshots.len() == 0");
-        pointer = pointer + chrono::Duration::seconds(1);
+        pointer += chrono::Duration::seconds(1);
         continue;
       }
       // get direction changes from signal snapshots
       let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
       if direction_changes.is_empty() {
         log::warn!("{eastern_now_timestamp}: direction_changes.len() == 0");
-        pointer = pointer + chrono::Duration::seconds(1);
+        pointer += chrono::Duration::seconds(1);
         continue;
       }
       let most_recent_direction_change = &direction_changes[direction_changes.len() - 1];
@@ -118,7 +118,7 @@ fn main() {
       let quote_snapshots = get_quote_snapshots_from_database(&connection, symbol, regular_market_start_timestamp, eastern_now_timestamp);
       if quote_snapshots.is_empty() {
         log::warn!("{eastern_now_timestamp}: quote_snapshots.len() == 0");
-        pointer = pointer + chrono::Duration::seconds(1);
+        pointer += chrono::Duration::seconds(1);
         continue;
       }
       let most_recent_quote_snapshot = &quote_snapshots[0];
@@ -207,7 +207,7 @@ fn main() {
         }
       }
       // increment pointer
-      pointer = pointer + chrono::Duration::seconds(1);
+      pointer += chrono::Duration::seconds(1);
     }
     log::info!("num_trades = {num_trades} total_profit_loss_percentage = {total_profit_loss_percentage}");
   });
