@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-pub fn get<T>(cache_map: &HashMap<&str, T>, cache_key: &str, populate_fn: &impl Fn() -> &T) -> &T {
+pub fn get<'a, T>(cache_map: &'a mut HashMap<&'a str, &'a T>, cache_key: &'a str, populate_fn: impl Fn() -> &'a T) -> &'a T {
   let value = cache_map.get(cache_key);
   if value.is_some() {
     return value.unwrap();
