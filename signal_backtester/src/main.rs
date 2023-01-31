@@ -98,8 +98,13 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
       continue;
     }
     // get most recent signal signal from candles
-    let strategy = SupertrendStrategy::new();
-    let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
+    let cache_map: HashMap<&str, Vec<SignalSnapshot>> = HashMap::new();
+    let cache_key = format!("{}:{}:{}", candle_lookup_max_timestamp, indicator_settings.supertrend_periods, indicator_settings.supertrend_multiplier);
+    let signal_snapshots: Vec<SignalSnapshot> = utilities::cache::get(&cache_map, &cache_key, || {
+      let strategy = SupertrendStrategy::new();
+      let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
+      return signal_snapshots;
+    });
     if signal_snapshots.is_empty() {
       log::trace!("{eastern_now_timestamp}: signal_snapshots.len() == 0");
       pointer += chrono::Duration::seconds(1);
@@ -332,6 +337,7 @@ fn main() {
       return (combination, num_trades, total_profit_loss_percentage);
     })
     .collect();
+    // sort by total_profit_loss_percentage descending
     results.sort_by(|a, b| {
       return b.2.partial_cmp(&a.2).unwrap();
     });

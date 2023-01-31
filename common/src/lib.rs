@@ -8,3 +8,4 @@ pub mod retry;
 pub mod structs;
 pub mod utilities;
 pub mod file;
+pub mod cache;
