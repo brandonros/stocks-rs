@@ -81,9 +81,11 @@ pub fn build_direction_changes_from_signal_snapshots(signal_snapshots: &Vec<Sign
     }
   }
   // make sure last trade is closed
-  let last_direction_change_index = direction_changes.len() - 1;
-  let mut last_direction_change = &mut direction_changes[last_direction_change_index];
-  last_direction_change.end_snapshot_index = Some(signal_snapshots.len() - 1);
+  if direction_changes.len() != 0 {
+    let last_direction_change_index = direction_changes.len() - 1;
+    let mut last_direction_change = &mut direction_changes[last_direction_change_index];
+    last_direction_change.end_snapshot_index = Some(signal_snapshots.len() - 1);
+  }
   // return
   return direction_changes;
 }

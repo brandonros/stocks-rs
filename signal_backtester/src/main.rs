@@ -1,6 +1,6 @@
 use common::database::*;
+use common::math;
 use common::structs::*;
-use strategies::*;
 use strategies::supertrend::*;
 
 fn get_candles_from_database(connection: &Database, symbol: &str, resolution: &str, start_timestamp: i64, end_timestamp: i64) -> Vec<Candle> {
@@ -63,10 +63,13 @@ fn main() {
     let symbol = "SPY";
     let resolution = "1";
     let indicator_settings = SupertrendStrategyIndicatorSettings {
-      supertrend_periods: 10,
-      supertrend_multiplier: 3.00,
+      supertrend_periods: 16,
+      supertrend_multiplier: 2.25,
     };
-    let warmed_up_index = 0; // TODO: make this at least 1?
+    let warmed_up_index = 16; // TODO: make this at least 1?
+    let profit_limit_percentage = 0.002;
+    let stop_loss_percentage = -0.001;
+    let slippage_percentage = 0.000125; // about $0.05 on a $400 share price
     // open database
     let connection = Database::new("./database.db");
     // init database tables
@@ -77,7 +80,11 @@ fn main() {
     let regular_market_start_timestamp = regular_market_start.timestamp();
     let mut pointer = regular_market_start;
     // state
-    let mut trade_direction = Direction::Flat;
+    let mut last_trade_direction = Direction::Flat;
+    let mut last_trade_open_quote: Option<QuoteSnapshot> = None;
+    let mut is_trade_open = false;
+    let mut total_profit_loss_percentage = 0.0;
+    let mut num_trades = 0;
     while pointer <= regular_market_end {
       let eastern_now = &pointer;
       let eastern_now_timestamp = eastern_now.timestamp();
@@ -85,10 +92,10 @@ fn main() {
       let current_candle_start_timestamp = current_candle_start.timestamp();
       let current_candle_end_timestamp = current_candle_end.timestamp();
       // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle
-      //let candle_lookup_max_timestamp = eastern_now_timestamp;
-      //let expected_max_signal_snapshot_age = 60;
-      let candle_lookup_max_timestamp = current_candle_start_timestamp - 1;
-      let expected_max_signal_snapshot_age = 120;
+      let candle_lookup_max_timestamp = eastern_now_timestamp;
+      let expected_max_signal_snapshot_age = 65;
+      //let candle_lookup_max_timestamp = current_candle_start_timestamp - 1;
+      //let expected_max_signal_snapshot_age = 120;
       let candles = get_candles_from_database(&connection, symbol, resolution, regular_market_start_timestamp, candle_lookup_max_timestamp);
       // get most recent signal signal from candles
       let strategy = SupertrendStrategy::new();
@@ -99,13 +106,14 @@ fn main() {
         continue;
       }
       // get direction changes from signal snapshots
-      let direction_changes = build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
+      let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
       if direction_changes.is_empty() {
         log::warn!("{eastern_now_timestamp}: direction_changes.len() == 0");
         pointer = pointer + chrono::Duration::seconds(1);
         continue;
       }
       let most_recent_direction_change = &direction_changes[direction_changes.len() - 1];
+      let most_recent_direction_change_start_snapshot = &signal_snapshots[most_recent_direction_change.start_snapshot_index];
       // get current quote
       let quote_snapshots = get_quote_snapshots_from_database(&connection, symbol, regular_market_start_timestamp, eastern_now_timestamp);
       if quote_snapshots.is_empty() {
@@ -126,15 +134,81 @@ fn main() {
       if signal_snapshot_age > expected_max_signal_snapshot_age {
         log::warn!("{eastern_now_timestamp}: signal_snapshot is old! signal_snapshot_age = {signal_snapshot_age}");
       }
-      // log
-      log::info!(
-        "{eastern_now_timestamp}: current_candle = {current_candle_start_timestamp}-{current_candle_end_timestamp} quote_age = {quote_age}s snapshot_age = {signal_snapshot_age}s direction = {:?} signal_snapshot = {:?} quote_snapshot = {:?}",
-        most_recent_direction_change,
-        most_recent_signal_snapshot,
-        most_recent_quote_snapshot
-      );
+      // check if open trade profit limited/stop lossed
+      if is_trade_open {
+        let hypothetcial_open_price = math::calculate_open_price_with_slippage(last_trade_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
+        let hypothetical_exit_price = math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
+        let open_profit_loss_percentage = math::calculate_profit_loss_percentage(last_trade_direction, hypothetcial_open_price, hypothetical_exit_price);
+        if open_profit_loss_percentage <= stop_loss_percentage {
+          log::info!("{eastern_now_timestamp},close,stop_loss,{quote_age},{hypothetical_exit_price}");
+          log::info!("{eastern_now_timestamp}: closing trade; stop loss hit; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
+            most_recent_quote_snapshot,
+            last_trade_open_quote
+          );
+          total_profit_loss_percentage += stop_loss_percentage;
+          num_trades += 1;
+          is_trade_open = false;
+        } else if open_profit_loss_percentage >= profit_limit_percentage {
+          log::info!("{eastern_now_timestamp},close,profit_limit,{quote_age},{hypothetical_exit_price}");
+          log::info!("{eastern_now_timestamp}: closing trade; profit limit hit; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
+            most_recent_quote_snapshot,
+            last_trade_open_quote
+          );
+          total_profit_loss_percentage += profit_limit_percentage;
+          num_trades += 1;
+          is_trade_open = false;
+        }
+      }
+      // check for direction change
+      if last_trade_direction != most_recent_direction_change_start_snapshot.direction {
+        // close any open trades
+        if is_trade_open == true {
+          let hypothetical_exit_price = math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
+          let hypothetcial_open_price = math::calculate_open_price_with_slippage(most_recent_direction_change_start_snapshot.direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
+          let open_profit_loss_percentage = math::calculate_profit_loss_percentage(most_recent_direction_change_start_snapshot.direction, hypothetcial_open_price, hypothetical_exit_price);
+          log::info!("{eastern_now_timestamp},close,direction_change,{quote_age},{hypothetical_exit_price}");
+          log::info!(
+            "{eastern_now_timestamp}: closing trade; direction change; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
+            most_recent_quote_snapshot,
+            last_trade_open_quote
+          );
+          total_profit_loss_percentage += open_profit_loss_percentage;
+          num_trades += 1;
+        }
+        // open new trade
+        let hypothetcial_open_price = math::calculate_open_price_with_slippage(most_recent_direction_change_start_snapshot.direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
+        log::info!("{eastern_now_timestamp},open,,{quote_age},{hypothetcial_open_price}");
+        log::info!(
+          "{eastern_now_timestamp}: opening new trade; current_candle = {current_candle_start_timestamp}-{current_candle_end_timestamp} quote_age = {quote_age}s snapshot_age = {signal_snapshot_age}s direction = {:?} signal_snapshot = {:?} quote_snapshot = {:?}",
+          most_recent_direction_change,
+          most_recent_signal_snapshot,
+          most_recent_quote_snapshot,
+        );
+        // set state
+        last_trade_direction = most_recent_direction_change_start_snapshot.direction;
+        last_trade_open_quote.replace(most_recent_quote_snapshot.clone());
+        is_trade_open = true;
+      }
+      // check for end of day
+      if pointer == regular_market_end {
+        // close any open trades
+        if is_trade_open == true {
+          let hypothetcial_open_price = math::calculate_open_price_with_slippage(last_trade_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
+          let hypothetical_exit_price = math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
+          let open_profit_loss_percentage = math::calculate_profit_loss_percentage(last_trade_direction, hypothetcial_open_price, hypothetical_exit_price);
+          log::info!("{eastern_now_timestamp},close,end_of_day,{quote_age},{hypothetical_exit_price}");
+          log::info!(
+            "{eastern_now_timestamp}: closing trade; end of day; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
+            most_recent_quote_snapshot,
+            last_trade_open_quote
+          );
+          total_profit_loss_percentage += open_profit_loss_percentage;
+          num_trades += 1;
+        }
+      }
       // increment pointer
       pointer = pointer + chrono::Duration::seconds(1);
     }
+    log::info!("num_trades = {num_trades} total_profit_loss_percentage = {total_profit_loss_percentage}");
   });
 }
