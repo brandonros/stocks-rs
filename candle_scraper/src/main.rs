@@ -117,8 +117,9 @@ fn main() {
       // check age
       let (current_candle_start, _current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, &eastern_now);
       let current_candle_start_timestamp = current_candle_start.timestamp();
+      let age = current_candle_start_timestamp - most_recent_candle.timestamp;
       if most_recent_candle.timestamp != current_candle_start_timestamp {
-        log::warn!("did not scrape most recent candle?");
+        log::warn!("did not scrape most recent candle? {} != {} (differnece {}s)", most_recent_candle.timestamp, current_candle_start_timestamp, age);
       }
       // log
       log::info!("{:?}", most_recent_candle);

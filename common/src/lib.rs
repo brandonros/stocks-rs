@@ -7,3 +7,4 @@ pub mod math;
 pub mod retry;
 pub mod structs;
 pub mod utilities;
+pub mod file;

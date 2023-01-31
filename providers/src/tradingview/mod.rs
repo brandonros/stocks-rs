@@ -456,8 +456,11 @@ impl TradingView {
       .iter()
       .find(|message| {
         return message.message_type == TradingViewMessageType::TimescaleUpdate;
-      })
-      .unwrap();
+      });
+    if timescale_update_message.is_none() {
+      return Err("failed to get timescale update messages".to_string());
+    }
+    let timescale_update_message = timescale_update_message.unwrap();
     let s = timescale_update_message.value.dot_get::<Vec<Value>>("p.1.series_parent_id.s").unwrap().unwrap();
     let formatted_candles: Vec<Candle> = s
       .iter()
