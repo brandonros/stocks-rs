@@ -1,6 +1,6 @@
 use chrono::{DateTime, Datelike, Utc, Weekday};
 use chrono_tz::{Tz, US::Eastern};
-use common::{database, structs::*, utilities};
+use common::{database::{self, ToQuery}, structs::*, utilities};
 
 fn main() {
   // logger
@@ -14,7 +14,7 @@ fn main() {
     let symbol = "SPY";
     let resolution = "1";
     // open database
-    let database = database::Database::new("./database.db");
+    let mut database = database::Database::new("./database.db");
     // init database tables
     database.migrate("./schema/");
     // loop
@@ -64,8 +64,8 @@ fn main() {
         utilities::aligned_sleep(5000).await;
         continue;
       }
-      let most_recent_candle = &candles[candles.len() - 1];
       // check age
+      let most_recent_candle = &candles[candles.len() - 1];
       let (current_candle_start, _current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, &eastern_now);
       let current_candle_start_timestamp = current_candle_start.timestamp();
       let age = current_candle_start_timestamp - most_recent_candle.timestamp;
@@ -75,9 +75,10 @@ fn main() {
       // log
       log::info!("{:?}", most_recent_candle);
       // insert most recent candle into database
-      let result = database.insert(most_recent_candle);
+      // TODO: only update most recent candle or go back and update all?
+      let result = database.batch_insert(&candles);
       if result.is_err() {
-        log::error!("failed to insert into database: {:?}", result);
+        log::error!("failed to insert rows into database {:?}", result);
         utilities::aligned_sleep(5000).await;
         continue;
       }

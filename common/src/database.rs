@@ -68,4 +68,15 @@ impl Database {
     let (query, params) = row.insert();
     return self.execute_query(query, params.as_slice());
   }
+
+  pub fn batch_insert<T: ToQuery>(&mut self, rows: &Vec<T>) -> Result<usize, rusqlite::Error> {
+    let transaction = self.connection.transaction()?;
+    let mut num_rows_affected = 0;
+    for row in rows {
+      let (query, parameters) = row.insert();
+      num_rows_affected += transaction.execute(query, parameters.as_slice())?;
+    }
+    transaction.commit()?;
+    return Ok(num_rows_affected);
+  }
 }

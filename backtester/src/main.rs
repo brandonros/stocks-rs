@@ -21,11 +21,11 @@ fn main() {
       let strategy_name = args.get(3).unwrap();
       let symbol = args.get(4).unwrap();
       let resolution = args.get(5).unwrap();
-      let start_date = args.get(6).unwrap();
-      let end_date = args.get(7).unwrap();
+      let start_date = format!("{} 00:00:00", args.get(6).unwrap());
+      let end_date = format!("{} 00:00:00", args.get(7).unwrap());
       let provider: Provider = provider_name.parse().unwrap();
       let strategy: Strategy = strategy_name.parse().unwrap();
-      let dates = common::dates::build_list_of_dates(start_date, end_date);
+      let dates = common::dates::build_list_of_dates(&start_date,& end_date);
       let dates: Vec<&str> = dates.iter().map(|date| return date.as_str()).collect();
       backtesting::backtest(symbol, resolution, &provider, &strategy, &dates).await;
     } else if command == "compute" {

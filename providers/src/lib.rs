@@ -74,8 +74,10 @@ pub async fn get_candles_by_provider_name(
       // TODO: make format consistent?
       let auth_token = String::from("unauthorized_user_token");
       let provider = self::tradingview::TradingView::new();
+      let range = 390; // TODO: just get last candle, last 2 candles, last few candles, or entire day?
+      let buffer_fill_delay_ms = 3000;
       let result = provider
-        .get_candles(auth_token, String::from(symbol), String::from(resolution), 1, String::from("regular"), 500)
+        .get_candles(auth_token, String::from(symbol), String::from(resolution), range, String::from("regular"), buffer_fill_delay_ms)
         .await;
       if result.is_err() {
         return Err(format!("{:?}", result));

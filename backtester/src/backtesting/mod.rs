@@ -47,7 +47,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   log::info!("building combinations");
   let warmed_up_index = 0; // TODO: do not hardcode?
   let slippage_percentage = 0.000125; // TODO: do not hardcode
-  let combination_mode = "static"; // or cartesian
+  let combination_mode = "static"; // static or cartesian
   let indicator_setting_combinations = combinations::build_indicator_setting_combinations(combination_mode, strategy);
   let backtest_setting_combinations = combinations::build_backtest_setting_combinations(combination_mode, warmed_up_index, slippage_percentage);
   log::info!("built combinations");
@@ -105,7 +105,6 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
         let key = format!("{}:{:?}:{:?}:{}", date, strategy, indicator_settings, backtest_settings.warmed_up_index);
         let signal_snapshots = date_indicator_settings_signal_snapshots_cache.get(&key).unwrap();
         let direction_changes = date_indicator_settings_direction_changes_cache.get(&key).unwrap();
-        log::info!("{:?}", direction_changes);
         let direction_changes_performance_snapshots = date_indicator_settings_performance_snapshots_cache.get(&key).unwrap();
         // backtest every direction change in date
         if backtest_settings.backtest_mode == BacktestMode::MultipleEntry {
@@ -116,7 +115,6 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
           let start_snapshot_index = direction_change.start_snapshot_index;
           let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
           let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..=end_snapshot_index].to_vec(); // TODO: get rid of clone?
-          log::info!("{}", serde_json::to_string(&trade_signal_snapshots).unwrap());
            // watch out for erroneous end of day direction change
           if trade_signal_snapshots.is_empty() {
             log::warn!("trade_snapshots.len() == 0 {:?}", direction_change);

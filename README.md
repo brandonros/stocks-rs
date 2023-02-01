@@ -43,7 +43,8 @@ aggregate statistics into win/loss ratio, profit/loss performance, etc.
 
 ```shell
 cargo run --bin historical_candle_scraper 2023-01-31 2023-01-31
-cargo run --bin backtester backtest polygon supertrend SPY 1 "2023-01-31 00:00:00" "2023-01-31 00:00:00"
+cargo run --bin backtester backtest polygon supertrend SPY 1 2023-01-31 2023-01-31
+cargo run --bin signal_backtester
 ```
 
 ## To validate
@@ -84,113 +85,36 @@ cargo run --bin backtester backtest polygon supertrend SPY 1 "2023-01-31 00:00:0
 ## To validate
 
 ```
-2023-02-01T04:20:25.271Z INFO  [signal_backtester] csv: open,1675175402,Long,401.28015375, 9:30:02am
-2023-02-01T04:20:25.284Z INFO  [signal_backtester] csv: close,1675177255,Long,400.9698725,DirectionChange 10:00:55am
+2023-02-01T05:10:08.306Z INFO  [signal_backtester] csv: open,1675175402,Long,401.28015375,
+2023-02-01T05:10:08.306Z INFO  [signal_backtester] csv: close,1675177262,Long,400.97487187499996,DirectionChange
 
-2023-02-01T04:20:25.284Z INFO  [signal_backtester] csv: open,1675177255,Short,400.9698725, 10:00:55am
-2023-02-01T04:20:25.295Z INFO  [signal_backtester] csv: close,1675178170,Short,402.35028750000004,DirectionChange 10:16:10am
+2023-02-01T05:10:08.306Z INFO  [signal_backtester] csv: open,1675177262,Short,400.97487187499996,
+2023-02-01T05:10:08.307Z INFO  [signal_backtester] csv: close,1675178402,Short,402.44029875,DirectionChange
 
-2023-02-01T04:20:25.295Z INFO  [signal_backtester] csv: open,1675178170,Long,402.35028750000004, 10:16:10am
-2023-02-01T04:20:25.295Z INFO  [signal_backtester] csv: close,1675178175,Long,402.28970749999996,DirectionChange 10:16:15am
+2023-02-01T05:10:08.307Z INFO  [signal_backtester] csv: open,1675178402,Long,402.44029875,
+2023-02-01T05:10:08.308Z INFO  [signal_backtester] csv: close,1675181582,Long,402.694656875,DirectionChange
 
-2023-02-01T04:20:25.296Z INFO  [signal_backtester] csv: open,1675178175,Short,402.28970749999996,
-2023-02-01T04:20:25.296Z INFO  [signal_backtester] csv: close,1675178226,Short,402.34028625,DirectionChange
-2023-02-01T04:20:25.296Z INFO  [signal_backtester] csv: open,1675178226,Long,402.34028625,
-2023-02-01T04:20:25.296Z INFO  [signal_backtester] csv: close,1675178231,Long,402.23971375,DirectionChange
-2023-02-01T04:20:25.296Z INFO  [signal_backtester] csv: open,1675178231,Short,402.23971375,
-2023-02-01T04:20:25.297Z INFO  [signal_backtester] csv: close,1675178236,Short,402.36028875,DirectionChange
-2023-02-01T04:20:25.297Z INFO  [signal_backtester] csv: open,1675178236,Long,402.36028875,
-2023-02-01T04:20:25.297Z INFO  [signal_backtester] csv: close,1675178241,Long,402.234714375,DirectionChange
-2023-02-01T04:20:25.297Z INFO  [signal_backtester] csv: open,1675178241,Short,402.234714375,
-2023-02-01T04:20:25.298Z INFO  [signal_backtester] csv: close,1675178320,Short,402.35028750000004,DirectionChange
-2023-02-01T04:20:25.298Z INFO  [signal_backtester] csv: open,1675178320,Long,402.35028750000004,
-2023-02-01T04:20:25.298Z INFO  [signal_backtester] csv: close,1675178325,Long,402.229715,DirectionChange
-2023-02-01T04:20:25.298Z INFO  [signal_backtester] csv: open,1675178325,Short,402.229715,
-2023-02-01T04:20:25.298Z INFO  [signal_backtester] csv: close,1675178345,Short,402.390892575,DirectionChange
-2023-02-01T04:20:25.298Z INFO  [signal_backtester] csv: open,1675178345,Long,402.390892575,
-2023-02-01T04:20:25.298Z INFO  [signal_backtester] csv: close,1675178350,Long,402.23971375,DirectionChange
-2023-02-01T04:20:25.299Z INFO  [signal_backtester] csv: open,1675178350,Short,402.23971375,
-2023-02-01T04:20:25.299Z INFO  [signal_backtester] csv: close,1675178390,Short,402.4302975,DirectionChange
-2023-02-01T04:20:25.299Z INFO  [signal_backtester] csv: open,1675178390,Long,402.4302975,
-2023-02-01T04:20:25.336Z INFO  [signal_backtester] csv: close,1675180430,Long,402.5296775,DirectionChange
-2023-02-01T04:20:25.336Z INFO  [signal_backtester] csv: open,1675180430,Short,402.5296775,
-2023-02-01T04:20:25.336Z INFO  [signal_backtester] csv: close,1675180435,Short,402.650325,DirectionChange
-2023-02-01T04:20:25.336Z INFO  [signal_backtester] csv: open,1675180435,Long,402.650325,
-2023-02-01T04:20:25.362Z INFO  [signal_backtester] csv: close,1675181580,Long,402.6896575,DirectionChange
-2023-02-01T04:20:25.362Z INFO  [signal_backtester] csv: open,1675181580,Short,402.6896575,
-2023-02-01T04:20:25.363Z INFO  [signal_backtester] csv: close,1675181585,Short,402.78034125,DirectionChange
-2023-02-01T04:20:25.363Z INFO  [signal_backtester] csv: open,1675181585,Long,402.78034125,
-2023-02-01T04:20:25.416Z INFO  [signal_backtester] csv: close,1675183505,Long,402.89963124999997,DirectionChange
-2023-02-01T04:20:25.416Z INFO  [signal_backtester] csv: open,1675183505,Short,402.89963124999997,
-2023-02-01T04:20:25.417Z INFO  [signal_backtester] csv: close,1675183515,Short,402.9903675,DirectionChange
-2023-02-01T04:20:25.417Z INFO  [signal_backtester] csv: open,1675183515,Long,402.9903675,
-2023-02-01T04:20:25.423Z INFO  [signal_backtester] csv: close,1675183700,Long,402.85963625000005,DirectionChange
-2023-02-01T04:20:25.423Z INFO  [signal_backtester] csv: open,1675183700,Short,402.85963625000005,
-2023-02-01T04:20:25.423Z INFO  [signal_backtester] csv: close,1675183715,Short,403.0142704875,DirectionChange
-2023-02-01T04:20:25.423Z INFO  [signal_backtester] csv: open,1675183715,Long,403.0142704875,
-2023-02-01T04:20:25.424Z INFO  [signal_backtester] csv: close,1675183730,Long,402.71965374999996,DirectionChange
-2023-02-01T04:20:25.424Z INFO  [signal_backtester] csv: open,1675183730,Short,402.71965374999996,
-2023-02-01T04:20:25.482Z INFO  [signal_backtester] csv: close,1675185440,Short,403.2303975,DirectionChange
-2023-02-01T04:20:25.482Z INFO  [signal_backtester] csv: open,1675185440,Long,403.2303975,
-2023-02-01T04:20:25.484Z INFO  [signal_backtester] csv: close,1675185475,Long,403.07960875,DirectionChange
-2023-02-01T04:20:25.484Z INFO  [signal_backtester] csv: open,1675185475,Short,403.07960875,
-2023-02-01T04:20:25.484Z INFO  [signal_backtester] csv: close,1675185480,Short,403.26040125,DirectionChange
-2023-02-01T04:20:25.484Z INFO  [signal_backtester] csv: open,1675185480,Long,403.26040125,
-2023-02-01T04:20:25.618Z INFO  [signal_backtester] csv: close,1675188635,Long,403.509555,DirectionChange
-2023-02-01T04:20:25.618Z INFO  [signal_backtester] csv: open,1675188635,Short,403.509555,
-2023-02-01T04:20:25.619Z INFO  [signal_backtester] csv: close,1675188645,Short,403.610445,DirectionChange
-2023-02-01T04:20:25.619Z INFO  [signal_backtester] csv: open,1675188645,Long,403.610445,
-2023-02-01T04:20:25.643Z INFO  [signal_backtester] csv: close,1675189136,Long,403.54955,DirectionChange
-2023-02-01T04:20:25.643Z INFO  [signal_backtester] csv: open,1675189136,Short,403.54955,
-2023-02-01T04:20:25.710Z INFO  [signal_backtester] csv: close,1675190456,Short,403.88047875,DirectionChange
-2023-02-01T04:20:25.710Z INFO  [signal_backtester] csv: open,1675190456,Long,403.88047875,
-2023-02-01T04:20:25.843Z INFO  [signal_backtester] csv: close,1675192791,Long,404.07948375,DirectionChange
-2023-02-01T04:20:25.843Z INFO  [signal_backtester] csv: open,1675192791,Short,404.07948375,
-2023-02-01T04:20:25.843Z INFO  [signal_backtester] csv: close,1675192795,Short,404.2305225,DirectionChange
-2023-02-01T04:20:25.843Z INFO  [signal_backtester] csv: open,1675192795,Long,404.2305225,
-2023-02-01T04:20:25.843Z INFO  [signal_backtester] csv: close,1675192800,Long,404.10948,DirectionChange
-2023-02-01T04:20:25.843Z INFO  [signal_backtester] csv: open,1675192800,Short,404.10948,
-2023-02-01T04:20:25.844Z INFO  [signal_backtester] csv: close,1675192805,Short,404.24052375,DirectionChange
-2023-02-01T04:20:25.844Z INFO  [signal_backtester] csv: open,1675192805,Long,404.24052375,
-2023-02-01T04:20:25.855Z INFO  [signal_backtester] csv: close,1675192996,Long,404.07948375,DirectionChange
-2023-02-01T04:20:25.855Z INFO  [signal_backtester] csv: open,1675192996,Short,404.07948375,
-2023-02-01T04:20:25.857Z INFO  [signal_backtester] csv: close,1675193021,Short,404.21052000000003,DirectionChange
-2023-02-01T04:20:25.857Z INFO  [signal_backtester] csv: open,1675193021,Long,404.21052000000003,
-2023-02-01T04:20:25.862Z INFO  [signal_backtester] csv: close,1675193105,Long,404.09948125,DirectionChange
-2023-02-01T04:20:25.862Z INFO  [signal_backtester] csv: open,1675193105,Short,404.09948125,
-2023-02-01T04:20:25.863Z INFO  [signal_backtester] csv: close,1675193120,Short,404.2305225,DirectionChange
-2023-02-01T04:20:25.863Z INFO  [signal_backtester] csv: open,1675193120,Long,404.2305225,
-2023-02-01T04:20:25.864Z INFO  [signal_backtester] csv: close,1675193140,Long,404.0894825,DirectionChange
-2023-02-01T04:20:25.864Z INFO  [signal_backtester] csv: open,1675193140,Short,404.0894825,
-2023-02-01T04:20:25.928Z INFO  [signal_backtester] csv: close,1675194145,Short,404.5505625,DirectionChange
-2023-02-01T04:20:25.928Z INFO  [signal_backtester] csv: open,1675194145,Long,404.5505625,
-2023-02-01T04:20:25.929Z INFO  [signal_backtester] csv: close,1675194160,Long,404.43953873749996,DirectionChange
-2023-02-01T04:20:25.929Z INFO  [signal_backtester] csv: open,1675194160,Short,404.43953873749996,
-2023-02-01T04:20:25.940Z INFO  [signal_backtester] csv: close,1675194320,Short,404.56056375,DirectionChange
-2023-02-01T04:20:25.940Z INFO  [signal_backtester] csv: open,1675194320,Long,404.56056375,
-2023-02-01T04:20:25.941Z INFO  [signal_backtester] csv: close,1675194330,Long,404.45943625,DirectionChange
-2023-02-01T04:20:25.941Z INFO  [signal_backtester] csv: open,1675194330,Short,404.45943625,
-2023-02-01T04:20:25.944Z INFO  [signal_backtester] csv: close,1675194380,Short,404.5896673875,DirectionChange
-2023-02-01T04:20:25.944Z INFO  [signal_backtester] csv: open,1675194380,Long,404.5896673875,
-2023-02-01T04:20:25.945Z INFO  [signal_backtester] csv: close,1675194390,Long,404.4403386375,DirectionChange
-2023-02-01T04:20:25.945Z INFO  [signal_backtester] csv: open,1675194390,Short,404.4403386375,
-2023-02-01T04:20:25.951Z INFO  [signal_backtester] csv: close,1675194485,Short,404.56056375,DirectionChange
-2023-02-01T04:20:25.951Z INFO  [signal_backtester] csv: open,1675194485,Long,404.56056375,
-2023-02-01T04:20:25.951Z INFO  [signal_backtester] csv: close,1675194490,Long,404.434439375,DirectionChange
-2023-02-01T04:20:25.951Z INFO  [signal_backtester] csv: open,1675194490,Short,404.434439375,
-2023-02-01T04:20:25.953Z INFO  [signal_backtester] csv: close,1675194515,Short,404.570565,DirectionChange
-2023-02-01T04:20:25.953Z INFO  [signal_backtester] csv: open,1675194515,Long,404.570565,
-2023-02-01T04:20:25.953Z INFO  [signal_backtester] csv: close,1675194520,Long,404.4494375,DirectionChange
-2023-02-01T04:20:25.953Z INFO  [signal_backtester] csv: open,1675194520,Short,404.4494375,
-2023-02-01T04:20:25.956Z INFO  [signal_backtester] csv: close,1675194550,Short,404.56056375,DirectionChange
-2023-02-01T04:20:25.956Z INFO  [signal_backtester] csv: open,1675194550,Long,404.56056375,
-2023-02-01T04:20:26.044Z INFO  [signal_backtester] csv: close,1675195855,Long,404.33945124999997,DirectionChange
-2023-02-01T04:20:26.044Z INFO  [signal_backtester] csv: open,1675195855,Short,404.33945124999997,
-2023-02-01T04:20:26.146Z INFO  [signal_backtester] csv: close,1675197265,Short,404.27552812500005,DirectionChange
-2023-02-01T04:20:26.146Z INFO  [signal_backtester] csv: open,1675197265,Long,404.27552812500005,
-2023-02-01T04:20:26.146Z INFO  [signal_backtester] csv: close,1675197270,Long,404.174471875,DirectionChange
-2023-02-01T04:20:26.146Z INFO  [signal_backtester] csv: open,1675197270,Short,404.174471875,
-2023-02-01T04:20:26.148Z INFO  [signal_backtester] csv: close,1675197285,Short,404.375540625,DirectionChange
-2023-02-01T04:20:26.148Z INFO  [signal_backtester] csv: open,1675197285,Long,404.375540625,
-2023-02-01T04:20:26.263Z INFO  [signal_backtester] csv: close,1675198791,Long,406.41919125000004,ProfitLimit
+2023-02-01T05:10:08.308Z INFO  [signal_backtester] csv: open,1675181582,Short,402.694656875,
+2023-02-01T05:10:08.308Z INFO  [signal_backtester] csv: close,1675181642,Short,403.02037125000004,DirectionChange
+2023-02-01T05:10:08.308Z INFO  [signal_backtester] csv: open,1675181642,Long,403.02037125000004,
+2023-02-01T05:10:08.309Z INFO  [signal_backtester] csv: close,1675183742,Long,402.8496375,DirectionChange
+2023-02-01T05:10:08.309Z INFO  [signal_backtester] csv: open,1675183742,Short,402.8496375,
+2023-02-01T05:10:08.310Z INFO  [signal_backtester] csv: close,1675185482,Short,403.24039875,DirectionChange
+2023-02-01T05:10:08.310Z INFO  [signal_backtester] csv: open,1675185482,Long,403.24039875,
+2023-02-01T05:10:08.313Z INFO  [signal_backtester] csv: close,1675189142,Long,403.56904756250003,DirectionChange
+2023-02-01T05:10:08.313Z INFO  [signal_backtester] csv: open,1675189142,Short,403.56904756250003,
+2023-02-01T05:10:08.314Z INFO  [signal_backtester] csv: close,1675190462,Short,403.87897856250004,DirectionChange
+2023-02-01T05:10:08.314Z INFO  [signal_backtester] csv: open,1675190462,Long,403.87897856250004,
+2023-02-01T05:10:08.317Z INFO  [signal_backtester] csv: close,1675192802,Long,404.13947625,DirectionChange
+2023-02-01T05:10:08.317Z INFO  [signal_backtester] csv: open,1675192802,Short,404.13947625,
+2023-02-01T05:10:08.317Z INFO  [signal_backtester] csv: close,1675192862,Short,404.27362788749997,DirectionChange
+2023-02-01T05:10:08.317Z INFO  [signal_backtester] csv: open,1675192862,Long,404.27362788749997,
+2023-02-01T05:10:08.317Z INFO  [signal_backtester] csv: close,1675193162,Long,404.100081175,DirectionChange
+2023-02-01T05:10:08.317Z INFO  [signal_backtester] csv: open,1675193162,Short,404.100081175,
+2023-02-01T05:10:08.319Z INFO  [signal_backtester] csv: close,1675194602,Short,404.635573125,DirectionChange
+2023-02-01T05:10:08.319Z INFO  [signal_backtester] csv: open,1675194602,Long,404.635573125,
+2023-02-01T05:10:08.321Z INFO  [signal_backtester] csv: close,1675195862,Long,404.304455625,DirectionChange
+2023-02-01T05:10:08.321Z INFO  [signal_backtester] csv: open,1675195862,Short,404.304455625,
+2023-02-01T05:10:08.323Z INFO  [signal_backtester] csv: close,1675197302,Short,404.33553562500003,DirectionChange
+2023-02-01T05:10:08.323Z INFO  [signal_backtester] csv: open,1675197302,Long,404.33553562500003,
 ```

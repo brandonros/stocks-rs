@@ -96,7 +96,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
     let candles = candles_timestamp_cache_map.get(&candle_lookup_max_timestamp).unwrap();
     if candles.len() == 0 {
       log::warn!("{eastern_now_timestamp}: candles.len() == 0");
-      pointer += chrono::Duration::seconds(pointer_increment_seconds);
+      pointer += chrono::Duration::seconds(1);
       continue;
     }
     // get most recent signal signal from candles
@@ -104,14 +104,14 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
     let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
     if signal_snapshots.is_empty() {
       log::warn!("{eastern_now_timestamp}: signal_snapshots.len() == 0");
-      pointer += chrono::Duration::seconds(pointer_increment_seconds);
+      pointer += chrono::Duration::seconds(1);
       continue;
     }
     // get direction changes from signal snapshots
     let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
     if direction_changes.is_empty() {
       log::warn!("{eastern_now_timestamp}: direction_changes.len() == 0");
-      pointer += chrono::Duration::seconds(pointer_increment_seconds);
+      pointer += chrono::Duration::seconds(1);
       continue;
     }
     let most_recent_direction_change = &direction_changes[direction_changes.len() - 1];
@@ -120,7 +120,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
     let most_recent_quote_snapshot = quote_snapshots_timestamp_cache_map.get(&eastern_now_timestamp);
     if most_recent_quote_snapshot.is_none() {
       log::warn!("{eastern_now_timestamp}: most_recent_quote_snapshot.is_none()");
-      pointer += chrono::Duration::seconds(pointer_increment_seconds);
+      pointer += chrono::Duration::seconds(1);
       continue;
     }
     let most_recent_quote_snapshot = most_recent_quote_snapshot.unwrap();
@@ -220,7 +220,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
       }
     }
     // increment pointer
-    pointer += chrono::Duration::seconds(pointer_increment_seconds);
+    pointer += chrono::Duration::seconds(60);
   }
   return (num_trades, total_profit_loss_percentage);
 }
