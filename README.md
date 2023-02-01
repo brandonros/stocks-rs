@@ -49,29 +49,36 @@ cargo run --bin backtester backtest polygon supertrend SPY 1 "2023-01-31 00:00:0
 ## To validate
 
 ```
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] Supertrend(SupertrendStrategyIndicatorSettings { supertrend_periods: 10, supertrend_multiplier: 3.0 })
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] BacktestSettings { slippage_percentage: 0.000125, profit_limit_percentage: 0.005, stop_loss_percentage: -0.01, warmed_up_index: 0, backtest_mode: SingleEntry }
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] BacktestStatistics { total_profit_percentage: 0.005326168750817819, total_win_profit_percentage: 0.009661183356849967, total_loss_profit_percentage: -0.004335014606032146, num_trades: 9, num_dates: 1, num_trades_per_day: 9.0, num_profit_limits: 1, num_stop_losses: 0, num_direction_changes: 8, num_wins: 6, num_losses: 3, num_breakevens: 0, win_loss_ratio: 2.0, win_rate_percentage: 0.6666666666666666, starting_portfolio_value: 1000.0, final_portfolio_value: 1005.3204907790355, portfolio_value_change: 5.320490779035481, portfolio_value_change_percentage: 0.005320490779035481 }
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] Supertrend(SupertrendStrategyIndicatorSettings { supertrend_periods: 10, supertrend_multiplier: 3.0 })
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] BacktestSettings { slippage_percentage: 0.000125, profit_limit_percentage: 0.005, stop_loss_percentage: -0.01, warmed_up_index: 0, backtest_mode: SingleEntry }
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] BacktestStatistics { total_profit_percentage: 0.005214250188648014, total_win_profit_percentage: 0.009599996650145323, total_loss_profit_percentage: -0.004385746461497308, num_trades: 9, num_dates: 1, num_trades_per_day: 9.0, num_profit_limits: 1, num_stop_losses: 0, num_direction_changes: 8, num_wins: 5, num_losses: 4, num_breakevens: 0, win_loss_ratio: 1.25, win_rate_percentage: 0.5555555555555556, starting_portfolio_value: 1000.0, final_portfolio_value: 1005.2079426702178, portfolio_value_change: 5.20794267021779, portfolio_value_change_percentage: 0.005207942670217789 }
 
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] open,1675175400,Long,401.18014125, 9:30:00am
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] close,1675177140,Long,401.1897450125,DirectionChange 9:59:00am
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675175400,Long,401.18014125, // 9:30am
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675177200,Short,401.17984625,DirectionChange // 10:00am
 
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] open,1675177200,Short,401.17984625, 10:00:00am
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] close,1675178880,Short,402.35028750000004,DirectionChange 10:28:00am
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] open,1675178940,Long,402.36038876249995,
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] close,1675183620,Long,402.99961875,DirectionChange
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] open,1675183680,Short,402.98962,
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] close,1675185420,Short,403.24039875,DirectionChange
-2023-02-01T04:13:48.780Z INFO  [backtester::backtesting] open,1675185480,Long,403.2504,
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] close,1675189320,Long,403.584545625,DirectionChange
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] open,1675189380,Short,403.57954625,
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] close,1675190700,Short,403.90048125000004,DirectionChange
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] open,1675190760,Long,403.90048125000004,
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] close,1675195740,Long,404.54942500000004,DirectionChange
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] open,1675195800,Short,404.54942500000004,
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] close,1675197180,Short,404.250525,DirectionChange
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] open,1675197240,Long,404.250525,
-2023-02-01T04:13:48.781Z INFO  [backtester::backtesting] close,1675198680,Long,406.2209936527968,ProfitLimit
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675177200,Short,401.17984625, // 10:00am
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675178940,Long,402.36038876249995,DirectionChange // 10:29am
+
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675178940,Long,402.36038876249995, // 10:29am
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675183680,Short,402.98962,DirectionChange // 11:48am
+
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675183680,Short,402.98962, // 11:48am
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675185480,Long,403.2504,DirectionChange // 12:18pm
+
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675185480,Long,403.2504, // 12:18pm
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675189380,Short,403.57954625,DirectionChange // 1:23pm
+
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675189380,Short,403.57954625, // 1:23pm
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675190760,Long,403.90048125000004,DirectionChange // 1:46pm
+
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675190760,Long,403.90048125000004, // 1:46pm
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675195800,Short,404.54942500000004,DirectionChange // 3:10pm
+
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675195800,Short,404.54942500000004, // 3:10pm
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675197240,Long,404.250525,DirectionChange
+
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] open,1675197240,Long,404.250525, // 3:34pm
+2023-02-01T05:01:12.964Z INFO  [backtester::backtesting] close,1675198680,Long,406.2209936527968,ProfitLimit // 3:58pm
 ```
 
 ## To validate
