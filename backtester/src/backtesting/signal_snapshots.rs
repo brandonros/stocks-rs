@@ -67,7 +67,8 @@ pub fn backtest_trade_performance_snapshots(
   } else if trade_outcome == BacktestOutcome::ProfitLimit {
     math::calculate_close_price_with_slippage(trade_direction, profit_limit_price, slippage_percentage)
   } else if trade_outcome == BacktestOutcome::DirectionChange {
-    math::calculate_close_price_with_slippage(trade_direction, trade_exit_signal_snapshot.candle.open, slippage_percentage) // TODO: you would get in at the open of the most recent candle instead of close of previous?
+    math::calculate_close_price_with_slippage(trade_direction, trade_exit_signal_snapshot.candle.open, slippage_percentage)
+  // TODO: you would get in at the open of the most recent candle instead of close of previous?
   } else {
     unimplemented!()
   };

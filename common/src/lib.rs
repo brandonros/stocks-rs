@@ -1,4 +1,6 @@
 pub mod database;
+pub mod dates;
+pub mod file;
 pub mod greeks;
 pub mod http_client;
 pub mod json_time;
@@ -7,5 +9,3 @@ pub mod math;
 pub mod retry;
 pub mod structs;
 pub mod utilities;
-pub mod file;
-pub mod dates;

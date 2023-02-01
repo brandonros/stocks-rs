@@ -1,6 +1,10 @@
 use chrono::{DateTime, Datelike, Utc, Weekday};
 use chrono_tz::{Tz, US::Eastern};
-use common::{database::{self, ToQuery}, structs::*, utilities};
+use common::{
+  database::{self, ToQuery},
+  structs::*,
+  utilities,
+};
 
 fn main() {
   // logger
@@ -70,7 +74,12 @@ fn main() {
       let current_candle_start_timestamp = current_candle_start.timestamp();
       let age = current_candle_start_timestamp - most_recent_candle.timestamp;
       if most_recent_candle.timestamp != current_candle_start_timestamp {
-        log::warn!("did not scrape most recent candle? {} != {} (differnece {}s)", most_recent_candle.timestamp, current_candle_start_timestamp, age);
+        log::warn!(
+          "did not scrape most recent candle? {} != {} (differnece {}s)",
+          most_recent_candle.timestamp,
+          current_candle_start_timestamp,
+          age
+        );
       }
       // log
       log::info!("{:?}", most_recent_candle);

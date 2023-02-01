@@ -4,10 +4,10 @@ use std::collections::HashMap;
 
 use combinations::BacktestCombination;
 use common::database::*;
+use common::file;
 use common::math;
 use common::structs::*;
 use common::utilities;
-use common::file;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal_macros::dec;
 use strategies::supertrend::*;
@@ -61,7 +61,12 @@ fn get_quote_snapshots_from_database(connection: &Database, symbol: &str, start_
   return quote_snapshots;
 }
 
-fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>>, quote_snapshots_timestamp_cache_map: &HashMap::<i64, QuoteSnapshot>, date: &str, combination: &BacktestCombination) -> (usize, f64) {
+fn backtest_combination(
+  candles_timestamp_cache_map: &HashMap<i64, Vec<Candle>>,
+  quote_snapshots_timestamp_cache_map: &HashMap<i64, QuoteSnapshot>,
+  date: &str,
+  combination: &BacktestCombination,
+) -> (usize, f64) {
   // config
   let slippage_percentage = 0.000125; // about $0.05 on a $400 share price
   let indicator_settings = SupertrendStrategyIndicatorSettings {
@@ -138,11 +143,19 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
     }
     // check if open trade profit limited/stop lossed
     if is_trade_open {
-      let hypothetcial_open_price = math::calculate_open_price_with_slippage(last_trade_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
-      let hypothetical_exit_price = math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
+      let hypothetcial_open_price = math::calculate_open_price_with_slippage(
+        last_trade_direction,
+        last_trade_open_quote.as_ref().unwrap().last_trade_price,
+        slippage_percentage,
+      );
+      let hypothetical_exit_price =
+        math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
       let open_profit_loss_percentage = math::calculate_profit_loss_percentage(last_trade_direction, hypothetcial_open_price, hypothetical_exit_price);
       if open_profit_loss_percentage <= stop_loss_percentage {
-        log::info!("csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},StopLoss", last_trade_direction);
+        log::info!(
+          "csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},StopLoss",
+          last_trade_direction
+        );
         log::info!("{eastern_now_timestamp}: closing trade; stop loss hit; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
           most_recent_quote_snapshot,
           last_trade_open_quote
@@ -153,7 +166,10 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
         is_trade_open = false;
         last_trade_open_quote = None;
       } else if open_profit_loss_percentage >= profit_limit_percentage {
-        log::info!("csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},ProfitLimit", last_trade_direction);
+        log::info!(
+          "csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},ProfitLimit",
+          last_trade_direction
+        );
         log::info!("{eastern_now_timestamp}: closing trade; profit limit hit; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
           most_recent_quote_snapshot,
           last_trade_open_quote
@@ -171,10 +187,15 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
       // close any open trades
       if is_trade_open == true {
         let old_direction = last_trade_direction;
-        let hypothetcial_open_price = math::calculate_open_price_with_slippage(old_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
-        let hypothetical_exit_price = math::calculate_close_price_with_slippage(old_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
+        let hypothetcial_open_price =
+          math::calculate_open_price_with_slippage(old_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
+        let hypothetical_exit_price =
+          math::calculate_close_price_with_slippage(old_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
         let open_profit_loss_percentage = math::calculate_profit_loss_percentage(old_direction, hypothetcial_open_price, hypothetical_exit_price);
-        log::info!("csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},DirectionChange", old_direction);
+        log::info!(
+          "csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},DirectionChange",
+          old_direction
+        );
         log::info!(
           "{eastern_now_timestamp}: closing trade; direction change; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
           most_recent_quote_snapshot,
@@ -203,10 +224,18 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
     if pointer == regular_market_end {
       // close any open trades
       if is_trade_open == true {
-        let hypothetcial_open_price = math::calculate_open_price_with_slippage(last_trade_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
-        let hypothetical_exit_price = math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
+        let hypothetcial_open_price = math::calculate_open_price_with_slippage(
+          last_trade_direction,
+          last_trade_open_quote.as_ref().unwrap().last_trade_price,
+          slippage_percentage,
+        );
+        let hypothetical_exit_price =
+          math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
         let open_profit_loss_percentage = math::calculate_profit_loss_percentage(last_trade_direction, hypothetcial_open_price, hypothetical_exit_price);
-        log::info!("csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},EndOfDay", last_trade_direction);
+        log::info!(
+          "csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},EndOfDay",
+          last_trade_direction
+        );
         log::info!(
           "{eastern_now_timestamp}: closing trade; end of day; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
           most_recent_quote_snapshot,
@@ -225,7 +254,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
   return (num_trades, total_profit_loss_percentage);
 }
 
-fn build_caches(connection: &Database, symbol: &str, resolution: &str, date: &str) -> (HashMap::<i64, Vec<Candle>>, HashMap::<i64, QuoteSnapshot>) {
+fn build_caches(connection: &Database, symbol: &str, resolution: &str, date: &str) -> (HashMap<i64, Vec<Candle>>, HashMap<i64, QuoteSnapshot>) {
   log::info!("building caches");
   let mut candles_timestamp_cache_map = HashMap::<i64, Vec<Candle>>::new();
   let mut quote_snapshots_timestamp_cache_map = HashMap::<i64, QuoteSnapshot>::new();
@@ -289,15 +318,18 @@ fn main() {
     log::info!("num_combinations = {}", combinations.len());
     // backtest combinations
     let num_tested = std::sync::atomic::AtomicUsize::new(0);
-    let mut results: Vec<(BacktestCombination, usize, f64)> = combinations.into_iter().map(|combination| {
-      let (num_trades, total_profit_loss_percentage) = backtest_combination(&candles_timestamp_cache_map, &quote_snapshots_timestamp_cache_map, date, &combination);
-      let num_tested = num_tested.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-      if num_tested % 100 == 0 {
-        log::info!("num_tested = {}", num_tested);
-      }
-      return (combination, num_trades, total_profit_loss_percentage);
-    })
-    .collect();
+    let mut results: Vec<(BacktestCombination, usize, f64)> = combinations
+      .into_iter()
+      .map(|combination| {
+        let (num_trades, total_profit_loss_percentage) =
+          backtest_combination(&candles_timestamp_cache_map, &quote_snapshots_timestamp_cache_map, date, &combination);
+        let num_tested = num_tested.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if num_tested % 100 == 0 {
+          log::info!("num_tested = {}", num_tested);
+        }
+        return (combination, num_trades, total_profit_loss_percentage);
+      })
+      .collect();
     // sort by total_profit_loss_percentage descending
     results.sort_by(|a, b| {
       return b.2.partial_cmp(&a.2).unwrap();

@@ -452,11 +452,9 @@ impl TradingView {
     let formatted_messages = self.format_buffer_messages().await;
     trace!("{}", serde_json::to_string(&formatted_messages).unwrap());
     // extract + format candles
-    let timescale_update_message = formatted_messages
-      .iter()
-      .find(|message| {
-        return message.message_type == TradingViewMessageType::TimescaleUpdate;
-      });
+    let timescale_update_message = formatted_messages.iter().find(|message| {
+      return message.message_type == TradingViewMessageType::TimescaleUpdate;
+    });
     if timescale_update_message.is_none() {
       return Err("failed to get timescale update messages".to_string());
     }

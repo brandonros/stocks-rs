@@ -1,4 +1,4 @@
-use rust_decimal::{Decimal};
+use rust_decimal::Decimal;
 
 pub async fn aligned_sleep(amount_ms: i64) {
   let now = chrono::Utc::now();

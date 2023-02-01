@@ -37,20 +37,18 @@ pub fn build_indicator_setting_combinations(mode: &str, strategy: &Strategy) -> 
     }
     return combinations;
   }
-  return vec![
-    match strategy {
-      Strategy::Supertrend => StrategyIndicatorSettings::Supertrend(SupertrendStrategyIndicatorSettings {
-        supertrend_periods: 10,
-        supertrend_multiplier: 3.0
-      }),
-      Strategy::VwapMvwapEmaCrossover => StrategyIndicatorSettings::VwapMvwapEmaCrossover(VwapMvwapEmaCrossoverStrategyIndicatorSettings {
-        vwap_ema_fast_periods: 1,
-        vwap_ema_slow_periods: 21,
-        ema_fast_periods: 7,
-        ema_slow_periods: 25,
-      }),
-    }
-  ];
+  return vec![match strategy {
+    Strategy::Supertrend => StrategyIndicatorSettings::Supertrend(SupertrendStrategyIndicatorSettings {
+      supertrend_periods: 10,
+      supertrend_multiplier: 3.0,
+    }),
+    Strategy::VwapMvwapEmaCrossover => StrategyIndicatorSettings::VwapMvwapEmaCrossover(VwapMvwapEmaCrossoverStrategyIndicatorSettings {
+      vwap_ema_fast_periods: 1,
+      vwap_ema_slow_periods: 21,
+      ema_fast_periods: 7,
+      ema_slow_periods: 25,
+    }),
+  }];
 }
 
 pub fn build_backtest_setting_combinations(mode: &str, warmed_up_index: usize, slippage_percentage: f64) -> Vec<BacktestSettings> {
@@ -73,13 +71,11 @@ pub fn build_backtest_setting_combinations(mode: &str, warmed_up_index: usize, s
     }
     return combinations;
   }
-  return vec![
-    BacktestSettings {
-      slippage_percentage: 0.000125,
-      profit_limit_percentage: 0.005,
-      stop_loss_percentage: -0.01,
-      warmed_up_index: 0,
-      backtest_mode: BacktestMode::SingleEntry,
-    }
-  ]
+  return vec![BacktestSettings {
+    slippage_percentage: 0.000125,
+    profit_limit_percentage: 0.005,
+    stop_loss_percentage: -0.01,
+    warmed_up_index: 0,
+    backtest_mode: BacktestMode::SingleEntry,
+  }];
 }

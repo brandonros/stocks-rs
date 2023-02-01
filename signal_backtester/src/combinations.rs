@@ -4,7 +4,7 @@ pub struct BacktestCombination {
   pub supertrend_multiplier: f64,
   pub profit_limit_percentage: f64,
   pub stop_loss_percentage: f64,
-  pub warmed_up_index: usize
+  pub warmed_up_index: usize,
 }
 
 pub fn build_combinations() -> Vec<BacktestCombination> {
@@ -34,13 +34,11 @@ pub fn build_combinations() -> Vec<BacktestCombination> {
     }
   }
   return combinations;*/
-  return vec![
-    BacktestCombination {
-      supertrend_periods: 10,
-      supertrend_multiplier: 3.0,
-      profit_limit_percentage: 0.005,
-      stop_loss_percentage: -0.01,
-      warmed_up_index: 0,
-    }
-  ];
+  return vec![BacktestCombination {
+    supertrend_periods: 10,
+    supertrend_multiplier: 3.0,
+    profit_limit_percentage: 0.005,
+    stop_loss_percentage: -0.01,
+    warmed_up_index: 0,
+  }];
 }

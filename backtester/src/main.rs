@@ -25,7 +25,7 @@ fn main() {
       let end_date = format!("{} 00:00:00", args.get(7).unwrap());
       let provider: Provider = provider_name.parse().unwrap();
       let strategy: Strategy = strategy_name.parse().unwrap();
-      let dates = common::dates::build_list_of_dates(&start_date,& end_date);
+      let dates = common::dates::build_list_of_dates(&start_date, &end_date);
       let dates: Vec<&str> = dates.iter().map(|date| return date.as_str()).collect();
       backtesting::backtest(symbol, resolution, &provider, &strategy, &dates).await;
     } else if command == "compute" {
