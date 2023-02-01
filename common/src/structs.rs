@@ -118,3 +118,16 @@ pub struct QuoteSnapshot {
   pub bid_price: f64,
   pub last_trade_price: f64,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CandleSnapshot {
+  //pub symbol: String,
+  //pub resolution: String,
+  pub scraped_at: i64,
+  pub timestamp: i64,
+  pub open: f64,
+  pub high: f64,
+  pub low: f64,
+  pub close: f64,
+  pub volume: i64,
+}

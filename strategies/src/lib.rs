@@ -26,6 +26,12 @@ pub struct DirectionChange {
   pub end_snapshot_index: Option<usize>,
 }
 
+#[derive(Serialize, Clone, Debug)]
+pub struct EnrichedDirectionChange {
+  pub start_snapshot: SignalSnapshot,
+  pub end_snapshot: Option<SignalSnapshot>,
+}
+
 impl FromStr for Strategy {
   type Err = ();
 
@@ -88,4 +94,19 @@ pub fn build_direction_changes_from_signal_snapshots(signal_snapshots: &Vec<Sign
   }
   // return
   return direction_changes;
+}
+
+pub fn build_enriched_direction_changes(direction_changes: &Vec<DirectionChange>, signal_snapshots: &Vec<SignalSnapshot>) -> Vec<EnrichedDirectionChange> {
+  return direction_changes.into_iter().map(|direction_change| {
+    let start_snapshot = signal_snapshots[direction_change.start_snapshot_index].clone();
+    let end_snapshot = if direction_change.end_snapshot_index.is_none() {
+      None
+    } else {
+      Some(signal_snapshots[direction_change.end_snapshot_index.unwrap()].clone())
+    };
+    return EnrichedDirectionChange {
+        start_snapshot,
+        end_snapshot
+    }
+  }).collect();
 }

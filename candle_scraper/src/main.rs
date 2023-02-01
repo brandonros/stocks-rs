@@ -54,8 +54,7 @@ fn main() {
         utilities::aligned_sleep(5000).await;
         continue;
       }
-      // get candle
-      // TODO: support scraping historical candles?
+      // get candles
       let result = providers::get_candles_by_provider_name(provider_name, symbol, resolution, regular_market_start, regular_market_end).await;
       if result.is_err() {
         log::error!("failed to get candles: {:?}", result);
@@ -69,6 +68,7 @@ fn main() {
         continue;
       }
       // check age
+      let oldest_candle = &candles[0];
       let most_recent_candle = &candles[candles.len() - 1];
       let (current_candle_start, _current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, &eastern_now);
       let current_candle_start_timestamp = current_candle_start.timestamp();
@@ -82,7 +82,7 @@ fn main() {
         );
       }
       // log
-      log::info!("{:?}", most_recent_candle);
+      log::info!("scraped {} candles; most_recent_candle = {:?} oldest_candle = {:?}", candles.len(), most_recent_candle, oldest_candle);
       // insert most recent candle into database
       // TODO: only update most recent candle or go back and update all?
       let result = database.batch_insert(&candles);
