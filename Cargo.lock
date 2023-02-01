@@ -791,6 +791,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "historical_candle_scraper"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "common",
+ "dotenv",
+ "log",
+ "providers",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "simple_logger",
+ "tokio",
+ "url",
+ "yahoo_finance_api",
+]
+
+[[package]]
 name = "http"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1292,10 +1312,6 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
-
-[[package]]
-name = "options_scraper"
-version = "0.1.0"
 
 [[package]]
 name = "parse-zoneinfo"

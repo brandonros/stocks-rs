@@ -5,10 +5,11 @@ members = [
   "providers",
   "strategies",
   # binaries
-  "backtester",
-  "signal_backtester",
+  "backtester", # TODO: combine into just backtester?
+  "signal_backtester", # TODO: combine into just backtester?
   "candle_scraper",
-  "options_scraper",
+  #"options_scraper", # TODO: implement
   "quote_scraper",
-  "signal_scraper"
+  "signal_scraper",
+  "historical_candle_scraper"
 ]

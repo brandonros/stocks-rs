@@ -1,0 +1,29 @@
+[package]
+name = "historical_candle_scraper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# logging
+simple_logger = "4.0"
+log = "0.4.17"
+# runtime
+tokio = { version = "1.24", features = ["rt", "macros"] }
+# json
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+# http request
+reqwest = "0.11.13"
+url = "2.3.1"
+# time
+chrono = "0.4.0"
+chrono-tz = "0.8.0"
+# yahoo finance
+yahoo_finance_api = "1.0"
+# common
+common = { path = "../common" }
+# providers
+providers = { path = "../providers" }
+# database
+rusqlite = { git = "https://github.com/rusqlite/rusqlite.git", features = ["bundled", "serde_json"] }
+dotenv = "0.15.0"

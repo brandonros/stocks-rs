@@ -17,7 +17,7 @@ pub mod trade_performance;
 
 pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strategy: &Strategy, dates: &Vec<&str>) {
   // connect to databse
-  let connection = Database::new(&format!("{:?}", provider));
+  let connection = Database::new(&format!("./database-{:?}.db", provider));
   connection.migrate("./schema/");
   // pull candles
   log::info!("pulling candles");
@@ -38,15 +38,18 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   let num_dates = dates.iter().fold(0, |prev, date| {
     let date_candles = candles_dates_map.get(date).unwrap();
     if date_candles.is_empty() {
-      //log::warn!("skipping {} due to no candles", date);
+      log::warn!("skipping {} due to no candles", date);
       return prev;
     }
     return prev + 1;
   });
   // build combinations
   log::info!("building combinations");
-  let indicator_setting_combinations = combinations::build_indicator_setting_combinations(strategy);
-  let backtest_setting_combinations = combinations::build_backtest_setting_combinations();
+  let warmed_up_index = 0; // TODO: do not hardcode?
+  let slippage_percentage = 0.000125; // TODO: do not hardcode
+  let combination_mode = "static"; // or cartesian
+  let indicator_setting_combinations = combinations::build_indicator_setting_combinations(combination_mode, strategy);
+  let backtest_setting_combinations = combinations::build_backtest_setting_combinations(combination_mode, warmed_up_index, slippage_percentage);
   log::info!("built combinations");
   // build caches based on indicator setting combinations
   log::info!(
@@ -62,12 +65,10 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
     for date in dates {
       let date_candles = candles_dates_map.get(date).unwrap();
       if date_candles.is_empty() {
-        //log::warn!("skipping {} due to no candles", date);
+        log::warn!("skipping {} due to no candles", date);
         continue;
       }
       let signal_snapshots = strategies::build_signal_snapshots_from_candles(strategy, indicator_setting_combination, date_candles);
-      let warmed_up_index = 10;
-      let slippage_percentage = 0.00025; // TODO: do not hardcode
       let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
       let direction_changes_performance_snapshots =
         trade_performance::build_trade_performance_snapshots_from_direction_changes(&direction_changes, &signal_snapshots, slippage_percentage);
@@ -89,7 +90,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   log::info!("backtesting combinations");
   let num_backtested = std::sync::atomic::AtomicUsize::new(0);
   let num_combinations = combined_combinations.len();
-  let mut combination_results: Vec<(&StrategyIndicatorSettings, &BacktestSettings, BacktestStatistics)> = combined_combinations
+  let mut combination_results: Vec<(&StrategyIndicatorSettings, &BacktestSettings, BacktestStatistics, Vec<BacktestResult>)> = combined_combinations
     .into_par_iter()
     .map(|(indicator_settings, backtest_settings)| {
       let mut backtest_dates_results = vec![];
@@ -114,13 +115,13 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
           let start_snapshot_index = direction_change.start_snapshot_index;
           let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
           let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..end_snapshot_index].to_vec(); // TODO: get rid of clone?
-                                                                                                             // watch out for erroneous end of day direction change
+           // watch out for erroneous end of day direction change
           if trade_signal_snapshots.is_empty() {
-            //log::warn!("trade_snapshots.len() == 0 {:?}", direction_change);
+            log::warn!("trade_snapshots.len() == 0 {:?}", direction_change);
             continue;
           }
           let direction_change_performance_snapshots = &direction_changes_performance_snapshots[index];
-          let result = signal_snapshots::backtest_trade_performance_snapshots(direction_change_performance_snapshots, signal_snapshots, backtest_settings);
+          let result = signal_snapshots::backtest_trade_performance_snapshots(direction_change_performance_snapshots, trade_signal_snapshots, backtest_settings);
           backtest_date_results.push(result);
         }
         backtest_dates_results.push(backtest_date_results);
@@ -131,7 +132,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
       if num_backtested % 1000 == 0 {
         log::info!("{} / {}", num_backtested, num_combinations);
       }
-      return (indicator_settings, backtest_settings, backtest_statistics);
+      return (indicator_settings, backtest_settings, backtest_statistics, flattened_backtest_results.clone());
     })
     .collect();
   log::info!("backtested combinations");
@@ -198,14 +199,19 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   // print best combination results
   let highest_combination_result = &combination_results[0];
   // write to file
-  let stringified_results = serde_json::to_string_pretty(&combination_results).unwrap();
+  let stringified_results = serde_json::to_string_pretty(&highest_combination_result).unwrap();
   let mut file = tokio::fs::File::create("/tmp/output.json").await.unwrap();
   file.write_all(stringified_results.as_bytes()).await.unwrap();
   // log to console
   log::info!("{:?}", highest_combination_result.0);
   log::info!("{:?}", highest_combination_result.1);
   log::info!("{:?}", highest_combination_result.2);
-  //log::info!("{:?}", highest_combination_result.3);*/
+  let backtest_results = &highest_combination_result.3;
+  for backtest_result in backtest_results {
+    log::info!("open,{},{:?},{},{:?}", backtest_result.trade_entry_snapshot.candle.timestamp, backtest_result.trade_entry_snapshot.direction, backtest_result.open_price, backtest_result.outcome);
+    log::info!("close,{},{:?},{},{:?}", backtest_result.trade_exit_snapshot.candle.timestamp, backtest_result.trade_exit_snapshot.direction, backtest_result.exit_price, backtest_result.outcome);
+  }
+
 }
 
 #[cfg(test)]
