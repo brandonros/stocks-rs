@@ -105,6 +105,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
         let key = format!("{}:{:?}:{:?}:{}", date, strategy, indicator_settings, backtest_settings.warmed_up_index);
         let signal_snapshots = date_indicator_settings_signal_snapshots_cache.get(&key).unwrap();
         let direction_changes = date_indicator_settings_direction_changes_cache.get(&key).unwrap();
+        log::info!("{:?}", direction_changes);
         let direction_changes_performance_snapshots = date_indicator_settings_performance_snapshots_cache.get(&key).unwrap();
         // backtest every direction change in date
         if backtest_settings.backtest_mode == BacktestMode::MultipleEntry {
@@ -114,7 +115,8 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
         for (index, direction_change) in direction_changes.iter().enumerate() {
           let start_snapshot_index = direction_change.start_snapshot_index;
           let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
-          let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..end_snapshot_index].to_vec(); // TODO: get rid of clone?
+          let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..=end_snapshot_index].to_vec(); // TODO: get rid of clone?
+          log::info!("{}", serde_json::to_string(&trade_signal_snapshots).unwrap());
            // watch out for erroneous end of day direction change
           if trade_signal_snapshots.is_empty() {
             log::warn!("trade_snapshots.len() == 0 {:?}", direction_change);
@@ -208,7 +210,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   log::info!("{:?}", highest_combination_result.2);
   let backtest_results = &highest_combination_result.3;
   for backtest_result in backtest_results {
-    log::info!("open,{},{:?},{},{:?}", backtest_result.trade_entry_snapshot.candle.timestamp, backtest_result.trade_entry_snapshot.direction, backtest_result.open_price, backtest_result.outcome);
+    log::info!("open,{},{:?},{},", backtest_result.trade_entry_snapshot.candle.timestamp, backtest_result.trade_entry_snapshot.direction, backtest_result.open_price);
     log::info!("close,{},{:?},{},{:?}", backtest_result.trade_exit_snapshot.candle.timestamp, backtest_result.trade_exit_snapshot.direction, backtest_result.exit_price, backtest_result.outcome);
   }
 

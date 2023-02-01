@@ -7,7 +7,7 @@ use super::trade_performance;
 
 pub fn backtest_trade_performance_snapshots(
   trade_performance_snapshots: &Vec<TradePerformanceSnapshot>,
-  signal_snapshots: &[SignalSnapshot],
+  trade_signal_snapshots: &[SignalSnapshot],
   backtest_settings: &BacktestSettings,
 ) -> BacktestResult {
   // settings
@@ -15,7 +15,7 @@ pub fn backtest_trade_performance_snapshots(
   let profit_limit_percentage = backtest_settings.profit_limit_percentage;
   let stop_loss_percentage = backtest_settings.stop_loss_percentage;
   // first snapshot
-  let first_snapshot = &signal_snapshots[0];
+  let first_snapshot = &trade_signal_snapshots[0];
   // trade direction
   let trade_direction = first_snapshot.direction;
   // trade open price with slippage
@@ -42,16 +42,16 @@ pub fn backtest_trade_performance_snapshots(
   // calculate direction change/trade end
   let trade_end_performance_snapshot = &trade_performance_snapshots[trade_performance_snapshots.len() - 1];
   let (trade_outcome, trade_exit_performance_snapshot) = trade_performance::determine_trade_outcome(
-    signal_snapshots,
+    trade_signal_snapshots,
     stop_loss_performance_snapshot,
     profit_limit_performance_snapshot,
     trade_end_performance_snapshot,
   );
   let trade_peak_performance_snapshot = trade_peak_performance_snapshot;
   let trade_trough_performance_snapshot = trade_trough_performance_snapshot;
-  let trade_peak_signal_snapshot = &signal_snapshots[trade_peak_performance_snapshot.signal_snapshot_index];
-  let trade_trough_signal_snapshot = &signal_snapshots[trade_trough_performance_snapshot.signal_snapshot_index];
-  let trade_exit_signal_snapshot = &signal_snapshots[trade_exit_performance_snapshot.signal_snapshot_index];
+  let trade_peak_signal_snapshot = &trade_signal_snapshots[trade_peak_performance_snapshot.signal_snapshot_index];
+  let trade_trough_signal_snapshot = &trade_signal_snapshots[trade_trough_performance_snapshot.signal_snapshot_index];
+  let trade_exit_signal_snapshot = &trade_signal_snapshots[trade_exit_performance_snapshot.signal_snapshot_index];
   // calculate profit limit + stop loss price from open + direction
   let profit_limit_price = math::calculate_profit_limit_price(trade_direction, open_price, profit_limit_percentage);
   let stop_loss_price = math::calculate_stop_loss_price(trade_direction, open_price, stop_loss_percentage);

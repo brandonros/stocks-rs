@@ -1,5 +1,8 @@
+mod combinations;
+
 use std::collections::HashMap;
 
+use combinations::BacktestCombination;
 use common::database::*;
 use common::math;
 use common::structs::*;
@@ -77,7 +80,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
   let mut total_profit_loss_percentage = 0.0;
   let mut num_trades = 0;
   // loop over entire day
-  let pointer_increment_seconds = 60;
+  let pointer_increment_seconds = 1;
   let mut pointer = regular_market_start;
   while pointer <= regular_market_end {
     // get timestamps
@@ -139,7 +142,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
       let hypothetical_exit_price = math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
       let open_profit_loss_percentage = math::calculate_profit_loss_percentage(last_trade_direction, hypothetcial_open_price, hypothetical_exit_price);
       if open_profit_loss_percentage <= stop_loss_percentage {
-        log::info!("{eastern_now_timestamp},close,stop_loss,{quote_age},{hypothetical_exit_price}");
+        log::info!("csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},StopLoss", last_trade_direction);
         log::info!("{eastern_now_timestamp}: closing trade; stop loss hit; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
           most_recent_quote_snapshot,
           last_trade_open_quote
@@ -150,7 +153,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
         is_trade_open = false;
         last_trade_open_quote = None;
       } else if open_profit_loss_percentage >= profit_limit_percentage {
-        log::info!("{eastern_now_timestamp},close,profit_limit,{quote_age},{hypothetical_exit_price}");
+        log::info!("csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},ProfitLimit", last_trade_direction);
         log::info!("{eastern_now_timestamp}: closing trade; profit limit hit; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
           most_recent_quote_snapshot,
           last_trade_open_quote
@@ -171,7 +174,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
         let hypothetcial_open_price = math::calculate_open_price_with_slippage(old_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
         let hypothetical_exit_price = math::calculate_close_price_with_slippage(old_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
         let open_profit_loss_percentage = math::calculate_profit_loss_percentage(old_direction, hypothetcial_open_price, hypothetical_exit_price);
-        log::info!("{eastern_now_timestamp},close,direction_change,{quote_age},{hypothetical_exit_price}");
+        log::info!("csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},DirectionChange", old_direction);
         log::info!(
           "{eastern_now_timestamp}: closing trade; direction change; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
           most_recent_quote_snapshot,
@@ -184,7 +187,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
       }
       // open new trade
       let hypothetcial_open_price = math::calculate_open_price_with_slippage(new_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
-      log::info!("{eastern_now_timestamp},open,,{quote_age},{hypothetcial_open_price}");
+      log::info!("csv: open,{eastern_now_timestamp},{:?},{hypothetcial_open_price},", new_direction);
       log::info!(
         "{eastern_now_timestamp}: opening new trade; quote_age = {quote_age}s snapshot_age = {signal_snapshot_age}s direction = {:?} signal_snapshot = {:?} quote_snapshot = {:?}",
         most_recent_direction_change,
@@ -203,7 +206,7 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
         let hypothetcial_open_price = math::calculate_open_price_with_slippage(last_trade_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
         let hypothetical_exit_price = math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
         let open_profit_loss_percentage = math::calculate_profit_loss_percentage(last_trade_direction, hypothetcial_open_price, hypothetical_exit_price);
-        log::info!("{eastern_now_timestamp},close,end_of_day,{quote_age},{hypothetical_exit_price}");
+        log::info!("csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},EndOfDay", last_trade_direction);
         log::info!(
           "{eastern_now_timestamp}: closing trade; end of day; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
           most_recent_quote_snapshot,
@@ -254,53 +257,6 @@ fn build_caches(connection: &Database, symbol: &str, resolution: &str, date: &st
   return (candles_timestamp_cache_map, quote_snapshots_timestamp_cache_map);
 }
 
-#[derive(Debug)]
-struct BacktestCombination {
-  pub supertrend_periods: usize,
-  pub supertrend_multiplier: f64,
-  pub profit_limit_percentage: f64,
-  pub stop_loss_percentage: f64,
-  pub warmed_up_index: usize
-}
-
-fn build_combinations() -> Vec<BacktestCombination> {
-  /*//let warmed_up_indices: Vec<usize> = (0..30).step_by(1).collect();
-  let warmed_up_indices = vec![0]; // TODO
-  let supertrend_periods: Vec<usize> = (5..30).step_by(1).collect();
-  let supertrend_multipliers = utilities::build_decimal_range(dec!(0.25), dec!(4.0), dec!(0.25));
-  let profit_limit_percentages = utilities::build_decimal_range(dec!(0.0005), dec!(0.01), dec!(0.0005));
-  //let stop_loss_percentages = utilities::build_decimal_range(dec!(-0.01), dec!(-0.0005), dec!(0.0005)); // TODO
-  let stop_loss_percentages = vec![dec!(-1.00)];
-  let mut combinations = vec![];
-  for warmed_up_index in &warmed_up_indices {
-    for profit_limit_percentage in &profit_limit_percentages {
-      for stop_loss_percentage in &stop_loss_percentages {
-        for supertrend_periods in &supertrend_periods {
-          for supertrend_multiplier in &supertrend_multipliers {
-            combinations.push(BacktestCombination {
-              supertrend_periods: *supertrend_periods,
-              supertrend_multiplier: supertrend_multiplier.to_f64().unwrap(),
-              profit_limit_percentage: profit_limit_percentage.to_f64().unwrap(),
-              stop_loss_percentage: stop_loss_percentage.to_f64().unwrap(),
-              warmed_up_index: *warmed_up_index
-            });
-          }
-        }
-      }
-    }
-  }
-  return combinations;*/
-  return vec![
-    BacktestCombination {
-      supertrend_periods: 10,
-      supertrend_multiplier: 3.0,
-      profit_limit_percentage: 0.002,
-      stop_loss_percentage: -0.002,
-      warmed_up_index: 0,
-    }
-  ];
-}
-
 fn main() {
   // logger
   simple_logger::init_with_level(log::Level::Info).unwrap();
@@ -329,7 +285,7 @@ fn main() {
     let quote_snapshots_timestamp_cache_map = file::read_json_from_file("./cache/quotes-2023-01-31.json").await;
     log::info!("loaded cache from files");
     // build combinations
-    let combinations = build_combinations();
+    let combinations = combinations::build_combinations();
     log::info!("num_combinations = {}", combinations.len());
     // backtest combinations
     let num_tested = std::sync::atomic::AtomicUsize::new(0);

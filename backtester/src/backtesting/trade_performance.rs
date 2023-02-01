@@ -12,7 +12,7 @@ pub fn build_trade_performance_snapshots_from_direction_changes(
   for direction_change in direction_changes {
     let start_snapshot_index = direction_change.start_snapshot_index;
     let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
-    let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..end_snapshot_index].to_vec(); // TODO: get rid of clone?
+    let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..=end_snapshot_index].to_vec(); // TODO: get rid of clone?
     if trade_signal_snapshots.is_empty() {
       // log::warn!("trade_signal_snapshots.len() == 0");
       continue;
