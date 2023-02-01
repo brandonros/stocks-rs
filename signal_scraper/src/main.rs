@@ -53,6 +53,7 @@ fn main() {
     // config
     let symbol = "SPY";
     let resolution = "1";
+    let warmed_up_index = 10; // TODO: 10 or 0 or something different?
     let indicator_settings = SupertrendStrategyIndicatorSettings {
       supertrend_periods: 10,
       supertrend_multiplier: 3.00,
@@ -126,13 +127,13 @@ fn main() {
         continue;
       }
       // get direction changes
-      let warmed_up_index = 0; // TODO: something other than 0?
       let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
       if direction_changes.is_empty() {
         log::warn!("direction_changes.len() == 0");
         utilities::aligned_sleep(1000).await;
         continue;
       }
+      let enriched_direction_changes = strategies::build_enriched_direction_changes(&direction_changes, &signal_snapshots);
       // get current quote
       let quote_snapshots = get_quote_snapshots_from_database(&connection, symbol, regular_market_start_timestamp, eastern_now_timestamp);
       if quote_snapshots.is_empty() {
@@ -153,13 +154,10 @@ fn main() {
       if most_recent_signal_snapshot_candle_age > 120 {
         log::warn!("signal_snapshot candle is old! most_recent_signal_snapshot_candle_age = {}", most_recent_signal_snapshot_candle_age);
       }
-      // get current direction
-      let most_recent_direction_change = &direction_changes[direction_changes.len() - 1];
-      let most_recent_direction_change_start_snapshot = &signal_snapshots[most_recent_direction_change.start_snapshot_index];
-      // candle index
-      let current_candle_index = (eastern_now_timestamp - regular_market_start_timestamp) / 60;
-      // enrich direction changes
-      let enriched_direction_changes = strategies::build_enriched_direction_changes(&direction_changes, &signal_snapshots);
+      // log
+      let current_candle_index = (eastern_now_timestamp - regular_market_start_timestamp) / 60;      
+      let most_recent_enriched_direction_change = &enriched_direction_changes[enriched_direction_changes.len() - 1];
+      let previous_enriched_direction_changes = &enriched_direction_changes[0..enriched_direction_changes.len() - 1];
       // log
       log::info!("{}", serde_json::to_string(&serde_json::json!({
         "now": eastern_now_timestamp,
@@ -172,11 +170,18 @@ fn main() {
           "age": quote_age,
           "snapshot": most_recent_quote_snapshot
         },
+        "settings": {
+          "indicator_settings": indicator_settings,
+          "warmed_up_index": warmed_up_index,
+        },
         "signal": {
           "candle_age": most_recent_signal_snapshot_candle_age,
           "snapshot": most_recent_signal_snapshot
         },
-        "direction_changes": enriched_direction_changes
+        "direction_changes": {
+          "current": most_recent_enriched_direction_change,
+          "previous": previous_enriched_direction_changes
+        }
       })).unwrap());
       // TODO: insert into database?
       // TODO: paper trade based off this data?*/

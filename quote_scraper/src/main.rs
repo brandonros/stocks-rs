@@ -48,6 +48,7 @@ fn main() {
     database.migrate("./schema/");
     // get robinhood access token
     let robinhood = robinhood::Robinhood::new();
+    // TODO: this expires every hour and causes the process to exit, we could probably be smarter because exiting and restart causes us to get behind quote snapshot age wise 2-5 seconds
     let result = robinhood.get_logged_out_access_token().await;
     if result.is_err() {
       panic!("failed to get logged out access token: {:?}", result);
@@ -86,6 +87,7 @@ fn main() {
         continue;
       }
       // get quote from robinhood
+      // TODO: handle failed to get quote Err("unknown error: invalid response status: 401") better due to token expiring
       let result = robinhood.get_quote(&access_token, symbol).await;
       if result.is_err() {
         panic!("failed to get quote {:?}", result);

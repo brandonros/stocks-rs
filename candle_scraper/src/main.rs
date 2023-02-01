@@ -55,6 +55,7 @@ fn main() {
         continue;
       }
       // get candles
+      // TODO: add a timeout so that we don't get stuck waiting for tradingview websocket connection to open for 30 seconds
       let result = providers::get_candles_by_provider_name(provider_name, symbol, resolution, regular_market_start, regular_market_end).await;
       if result.is_err() {
         log::error!("failed to get candles: {:?}", result);
@@ -73,6 +74,7 @@ fn main() {
       let (current_candle_start, _current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, &eastern_now);
       let current_candle_start_timestamp = current_candle_start.timestamp();
       let age = current_candle_start_timestamp - most_recent_candle.timestamp;
+      // TODO: if we did not get most recent candle... short circuit and go back to loop in effort to get most recent candle more quickly?
       if most_recent_candle.timestamp != current_candle_start_timestamp {
         log::warn!(
           "did not scrape most recent candle? {} != {} (differnece {}s)",
