@@ -2,3 +2,5 @@
 target
 *.db
 .env
+*.stacks
+*.svg

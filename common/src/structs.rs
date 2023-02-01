@@ -61,8 +61,8 @@ pub struct MinimalSnapshot {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Candle {
-  pub symbol: String,
-  pub resolution: String,
+  //pub symbol: String,
+  //pub resolution: String,
   pub timestamp: i64,
   pub open: f64,
   pub high: f64,
@@ -97,8 +97,8 @@ impl database::ToQuery for Candle {
       )
     ";
     let params = rusqlite::named_params! {
-      ":symbol": self.symbol,
-      ":resolution": self.resolution,
+      ":symbol": "SPY", // TODO: hardcoded this to get rid of .clone everywhere
+      ":resolution": "1", // TODO: hardcoded this to get rid of .clone everywhere
       ":timestamp": self.timestamp,
       ":open": self.open,
       ":high": self.high,

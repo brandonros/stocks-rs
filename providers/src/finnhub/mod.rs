@@ -48,8 +48,8 @@ impl Finnhub {
       let close = closes[i];
       let volume = volumes[i] as i64;
       candles.push(Candle {
-        symbol: symbol.to_string(),
-        resolution: resolution.to_string(),
+        //symbol: symbol.to_string(),
+        //resolution: resolution.to_string(),
         timestamp,
         open,
         high,

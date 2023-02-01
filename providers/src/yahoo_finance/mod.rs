@@ -32,8 +32,8 @@ impl YahooFinance {
       .iter()
       .map(|quote| {
         return Candle {
-          symbol: symbol.to_string(),
-          resolution: resolution.to_string(),
+          //symbol: symbol.to_string(),
+          //resolution: resolution.to_string(),
           timestamp: quote.timestamp as i64,
           open: quote.open,
           high: quote.high,

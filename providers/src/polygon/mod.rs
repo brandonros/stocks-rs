@@ -46,8 +46,8 @@ impl Polygon {
       let close = result.c;
       let volume = result.v as i64;
       candles.push(Candle {
-        symbol: symbol.to_string(),
-        resolution: resolution.to_string(),
+        //symbol: symbol.to_string(),
+        //resolution: resolution.to_string(),
         timestamp,
         open,
         high,

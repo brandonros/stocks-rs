@@ -5,8 +5,6 @@ use common::math;
 use common::structs::*;
 use common::utilities;
 use common::file;
-use rayon::prelude::IntoParallelIterator;
-use rayon::prelude::ParallelIterator;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal_macros::dec;
 use strategies::supertrend::*;
@@ -60,7 +58,7 @@ fn get_quote_snapshots_from_database(connection: &Database, symbol: &str, start_
   return quote_snapshots;
 }
 
-fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>>, quote_snapshots_timestamp_cache_map: &HashMap::<i64, QuoteSnapshot>, date: &str, combination: &BacktestCombination) -> (usize, f64) {
+fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>>, quote_snapshots_timestamp_cache_map: &HashMap::<i64, QuoteSnapshot>, signal_snapshots_cache_map: &mut HashMap<String, std::rc::Rc<Vec<SignalSnapshot>>>, direction_changes_cache_map: &mut HashMap<String, std::rc::Rc<Vec<strategies::DirectionChange>>>, date: &str, combination: &BacktestCombination) -> (usize, f64) {
   // config
   let slippage_percentage = 0.000125; // about $0.05 on a $400 share price
   let indicator_settings = SupertrendStrategyIndicatorSettings {
@@ -98,12 +96,11 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
       continue;
     }
     // get most recent signal signal from candles
-    let mut cache_map: HashMap<&str, &Vec<SignalSnapshot>> = HashMap::new();
-    let cache_key = format!("{}:{}:{}", candle_lookup_max_timestamp, indicator_settings.supertrend_periods, indicator_settings.supertrend_multiplier);
-    let signal_snapshots: &Vec<SignalSnapshot> = common::cache::get(&mut cache_map, &cache_key, || {
+    let signal_snapshots_cache_key = format!("signal_snapshots:{}:{}:{}", eastern_now, indicator_settings.supertrend_periods, indicator_settings.supertrend_multiplier);
+    let signal_snapshots = common::cache::get(signal_snapshots_cache_map, &signal_snapshots_cache_key, &|| {
       let strategy = SupertrendStrategy::new();
       let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
-      return &signal_snapshots;
+      return signal_snapshots;
     });
     if signal_snapshots.is_empty() {
       log::trace!("{eastern_now_timestamp}: signal_snapshots.len() == 0");
@@ -111,7 +108,10 @@ fn backtest_combination(candles_timestamp_cache_map: &HashMap::<i64, Vec<Candle>
       continue;
     }
     // get direction changes from signal snapshots
-    let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
+    let direction_changes_cache_key = format!("direction_changes:{}:{}:{}:{}", eastern_now, indicator_settings.supertrend_periods, indicator_settings.supertrend_multiplier, warmed_up_index);
+    let direction_changes = common::cache::get(direction_changes_cache_map, &direction_changes_cache_key, &|| {
+      return strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
+    });
     if direction_changes.is_empty() {
       log::trace!("{eastern_now_timestamp}: direction_changes.len() == 0");
       pointer += chrono::Duration::seconds(1);
@@ -296,6 +296,15 @@ fn build_combinations() -> Vec<BacktestCombination> {
     }
   }
   return combinations;
+  /*return vec![
+    BacktestCombination {
+      supertrend_periods: 10,
+      supertrend_multiplier: 3.0,
+      profit_limit_percentage: 0.001,
+      stop_loss_percentage: -0.001,
+      warmed_up_index: 0,
+    }
+  ];*/
 }
 
 fn main() {
@@ -322,14 +331,16 @@ fn main() {
     log::info!("loading cache from files");
     let candles_timestamp_cache_map = file::read_json_from_file("/tmp/candles.json").await;
     let quote_snapshots_timestamp_cache_map = file::read_json_from_file("/tmp/quotes.json").await;
+    let mut signal_snapshots_cache_map = HashMap::new();
+    let mut direction_changes_cache_map = HashMap::new();
     log::info!("loaded cache from files");
     // build combinations
     let combinations = build_combinations();
     log::info!("num_combinations = {}", combinations.len());
     // backtest combinations
     let num_tested = std::sync::atomic::AtomicUsize::new(0);
-    let mut results: Vec<(BacktestCombination, usize, f64)> = combinations.into_par_iter().map(|combination| {
-      let (num_trades, total_profit_loss_percentage) = backtest_combination(&candles_timestamp_cache_map, &quote_snapshots_timestamp_cache_map, date, &combination);
+    let mut results: Vec<(BacktestCombination, usize, f64)> = combinations.into_iter().map(|combination| {
+      let (num_trades, total_profit_loss_percentage) = backtest_combination(&candles_timestamp_cache_map, &quote_snapshots_timestamp_cache_map, &mut signal_snapshots_cache_map, &mut direction_changes_cache_map, date, &combination);
       let num_tested = num_tested.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
       if num_tested % 100 == 0 {
         log::info!("num_tested = {}", num_tested);

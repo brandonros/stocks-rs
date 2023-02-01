@@ -476,8 +476,8 @@ impl TradingView {
         let volume = volume as usize;
         return Candle {
           //source: String::from("tradingview"), // TODO: sources on candles?
-          symbol: symbol.to_owned(),
-          resolution: timeframe.to_owned(),
+          //symbol: symbol.to_owned(),
+          //resolution: timeframe.to_owned(),
           timestamp: candle_timestamp,
           open,
           high,
