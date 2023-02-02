@@ -112,7 +112,7 @@ impl database::ToQuery for Candle {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct QuoteSnapshot {
-  pub symbol: String,
+  //pub symbol: String, // TODO: do not hardcode?
   pub scraped_at: i64,
   pub ask_price: f64,
   pub bid_price: f64,
@@ -130,4 +130,11 @@ pub struct CandleSnapshot {
   pub low: f64,
   pub close: f64,
   pub volume: i64,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub enum BacktestOutcome {
+  ProfitLimit,
+  StopLoss,
+  DirectionChange,
 }

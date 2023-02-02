@@ -1,4 +1,5 @@
 use crate::structs::*;
+use common::structs::*;
 use common::math;
 
 pub fn calculate_backtest_statistics(num_dates: usize, backtest_results: &Vec<BacktestResult>) -> BacktestStatistics {

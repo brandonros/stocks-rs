@@ -75,7 +75,7 @@ pub fn build_backtest_setting_combinations(mode: &str, warmed_up_index: usize, s
     slippage_percentage: 0.000125,
     profit_limit_percentage: 0.005,
     stop_loss_percentage: -0.01,
-    warmed_up_index: 0,
+    warmed_up_index: 10,
     backtest_mode: BacktestMode::SingleEntry,
   }];
 }

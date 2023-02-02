@@ -16,7 +16,7 @@ pub mod statistics;
 pub mod trade_performance;
 
 pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strategy: &Strategy, dates: &Vec<&str>) {
-  // connect to databse
+  // connect to databses
   let connection = Database::new(&format!("./database-{:?}.db", provider));
   connection.migrate("./schema/");
   // pull candles
@@ -45,7 +45,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   });
   // build combinations
   log::info!("building combinations");
-  let warmed_up_index = 0; // TODO: do not hardcode?
+  let warmed_up_index = 10; // TODO: 10 or 9 based on supertrend_periods?
   let slippage_percentage = 0.000125; // TODO: do not hardcode
   let combination_mode = "static"; // static or cartesian
   let indicator_setting_combinations = combinations::build_indicator_setting_combinations(combination_mode, strategy);

@@ -24,6 +24,19 @@
         "2023-01-31 00:00:00",
         "2023-01-31 00:00:00"
       ]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "signal_backtester",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin",
+          "signal_backtester"
+        ]
+      },
+      "args": []
     }
   ]
 }

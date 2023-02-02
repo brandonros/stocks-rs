@@ -7,8 +7,12 @@ fn main() {
   let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
   // run
   rt.block_on(async {
+    // arguments
+    let args: Vec<String> = std::env::args().collect();
+    let provider_name = args.get(1).unwrap();
+    let start_date = format!("{} 00:00:00", args.get(2).unwrap());
+    let end_date = format!("{} 00:00:00", args.get(3).unwrap());
     // config
-    let provider_name = "polygon";
     let symbol = "SPY";
     let resolution = "1";
     // open database
@@ -16,9 +20,7 @@ fn main() {
     // init database tables
     connection.migrate("./schema/");
     // get dates
-    let args: Vec<String> = std::env::args().collect();
-    let start_date = format!("{} 00:00:00", args.get(1).unwrap());
-    let end_date = format!("{} 00:00:00", args.get(2).unwrap());
+    
     let dates = common::dates::build_list_of_dates(&start_date, &end_date);
     // loop dates
     for date in &dates {

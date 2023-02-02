@@ -23,6 +23,13 @@ pub fn calculate_percentage_decrease(old_value: f64, new_value: f64) -> f64 {
   return delta / old_value;
 }
 
+pub fn calculate_percentage_change(old_value: f64, new_value: f64) -> f64 {
+  if old_value <= new_value {
+    return calculate_percentage_increase(old_value, new_value);
+  }
+  return calculate_percentage_decrease(old_value, new_value);
+}
+
 pub fn calculate_open_price_with_slippage(trade_direction: Direction, open_price: f64, slippage_percentage: f64) -> f64 {
   let slippage = open_price * slippage_percentage;
   if trade_direction == Direction::Long {
@@ -62,4 +69,18 @@ pub fn calculate_profit_loss_percentage(trade_direction: Direction, open_price: 
     return calculate_percentage_increase(open_price, exit_price);
   }
   return calculate_percentage_decrease(open_price, exit_price);
+}
+
+pub fn calculate_best_case_scenario_price(trade_direction: Direction, candle: &Candle) -> f64 {
+  if trade_direction == Direction::Long {
+    return candle.high;
+  }
+  return candle.low;
+}
+
+pub fn calculate_worst_case_scenario_price(trade_direction: Direction, candle: &Candle) -> f64 {
+  if trade_direction == Direction::Long {
+    return candle.low;
+  }
+  return candle.high;
 }

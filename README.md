@@ -42,8 +42,8 @@ aggregate statistics into win/loss ratio, profit/loss performance, etc.
 ## Historical backtesting
 
 ```shell
-cargo run --bin historical_candle_scraper 2023-01-31 2023-01-31
-cargo run --bin backtester backtest polygon supertrend SPY 1 2023-01-31 2023-01-31
+cargo run --bin historical_candle_scraper tradingview 2023-02-01 2023-02-01
+cargo run --bin backtester backtest tradingview supertrend SPY 1 2023-02-01 2023-02-01
 cargo run --bin signal_backtester
 ```
 

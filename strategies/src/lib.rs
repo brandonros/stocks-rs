@@ -76,7 +76,7 @@ pub fn build_direction_changes_from_signal_snapshots(signal_snapshots: &Vec<Sign
       if !direction_changes.is_empty() {
         let last_direction_change_index = direction_changes.len() - 1;
         let mut last_direction_change = &mut direction_changes[last_direction_change_index];
-        last_direction_change.end_snapshot_index = Some(i);
+        last_direction_change.end_snapshot_index = Some(i - 1); // TODO: off by one or not?
       }
       // open new trade
       direction_changes.push(DirectionChange {

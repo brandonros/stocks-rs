@@ -1,289 +1,194 @@
-mod combinations;
+use chrono_tz::US::Eastern;
+use common::database::Database;
+use common::{structs::*, math};
+use common::{database, structs::QuoteSnapshot};
+use strategies::supertrend::{SupertrendStrategy, SupertrendStrategyIndicatorSettings};
 
-use std::collections::HashMap;
-
-use combinations::BacktestCombination;
-use common::database::*;
-use common::file;
-use common::math;
-use common::structs::*;
-use common::utilities;
-use rust_decimal::prelude::ToPrimitive;
-use rust_decimal_macros::dec;
-use strategies::supertrend::*;
-
-fn get_candles_from_database(connection: &Database, symbol: &str, resolution: &str, start_timestamp: i64, end_timestamp: i64) -> Vec<Candle> {
-  let candles_query = format!(
+fn get_candle_snapshots_from_database(connection: &Database, symbol: &str, resolution: &str, eastern_now_timestamp: i64, regular_market_start_timestamp: i64, candle_lookup_max_timestamp: i64) -> Vec<CandleSnapshot> {
+  let query = format!(
     "
-    with most_recent_candle_snapshots as (
-      select max(scraped_at) as scraped_at, symbol, resolution, timestamp from candles
-      where scraped_at >= {start_timestamp} and scraped_at <= {end_timestamp} and symbol = '{symbol}' and resolution = '{resolution}'
-      group by symbol, resolution, timestamp
-    )
-    select
-      candles.symbol,
-      candles.resolution,
-      candles.timestamp,
-      open,
-      high,
+    select scraped_at,
+      timestamp, 
+      open, 
+      high, 
       low,
       close,
       volume
-    from most_recent_candle_snapshots
-    join candles on most_recent_candle_snapshots.scraped_at = candles.scraped_at and 
-      most_recent_candle_snapshots.timestamp = candles.timestamp and 
-      most_recent_candle_snapshots.symbol = candles.symbol and 
-      most_recent_candle_snapshots.resolution = candles.resolution
-      where candles.timestamp >= {start_timestamp}
-      and candles.timestamp <= {end_timestamp}
-      and candles.resolution = '{resolution}'
-      and candles.symbol = '{symbol}'
-    ORDER BY candles.timestamp ASC
+    from candles 
+    where timestamp >= {regular_market_start_timestamp} and timestamp <= {candle_lookup_max_timestamp}
+    and scraped_at = (select scraped_at from candles where scraped_at >= {regular_market_start_timestamp} and scraped_at <= {eastern_now_timestamp} order by scraped_at desc limit 1) 
+    and symbol = '{symbol}'
+    and resolution = '{resolution}'
+    ORDER BY timestamp ASC
   "
   );
   // TODO: filter out current partial candle and only look at 100% closed candles?
   // TODO: how to check if candle_scraper process crashed and data is stale/partial?
-  let candles = connection.get_rows_from_database::<Candle>(&candles_query);
-  return candles;
+  return connection.get_rows_from_database::<CandleSnapshot>(&query);
 }
 
 fn get_quote_snapshots_from_database(connection: &Database, symbol: &str, start_timestamp: i64, end_timestamp: i64) -> Vec<QuoteSnapshot> {
   let quotes_query = format!(
     "
-    select symbol, scraped_at, ask_price, bid_price, last_trade_price
+    select scraped_at, ask_price, bid_price, last_trade_price
     from quote_snapshots
     where symbol = '{symbol}' and scraped_at >= {start_timestamp} and scraped_at <= {end_timestamp}
-    order by scraped_at desc
-    limit 1
+    order by scraped_at asc
     "
   );
   let quote_snapshots = connection.get_rows_from_database::<QuoteSnapshot>(&quotes_query);
   return quote_snapshots;
 }
 
-fn backtest_combination(
-  candles_timestamp_cache_map: &HashMap<i64, Vec<Candle>>,
-  quote_snapshots_timestamp_cache_map: &HashMap<i64, QuoteSnapshot>,
-  date: &str,
-  combination: &BacktestCombination,
-) -> (usize, f64) {
-  // config
-  let slippage_percentage = 0.000125; // about $0.05 on a $400 share price
-  let indicator_settings = SupertrendStrategyIndicatorSettings {
-    supertrend_periods: combination.supertrend_periods,
-    supertrend_multiplier: combination.supertrend_multiplier,
-  };
-  let warmed_up_index = combination.warmed_up_index;
-  let profit_limit_percentage = combination.profit_limit_percentage;
-  let stop_loss_percentage = combination.stop_loss_percentage;
-  // times
+fn backtest_date(connection: &Database, symbol: &str, resolution: &str, warmed_up_index: usize, indicator_settings: &SupertrendStrategyIndicatorSettings, date: &str) -> Result<(), String> {
+  let slippage_percentage = 0.000125;
+  let profit_limit_percentage = 0.005;
+  let stop_loss_percentage = -0.01;
   let (regular_market_start, regular_market_end) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
-  // state
-  let mut last_trade_direction = Direction::Flat;
-  let mut last_trade_open_quote: Option<QuoteSnapshot> = None;
-  let mut is_trade_open = false;
-  let mut total_profit_loss_percentage = 0.0;
-  let mut num_trades = 0;
-  // loop over entire day
-  let pointer_increment_seconds = 1;
-  let mut pointer = regular_market_start;
-  while pointer <= regular_market_end {
-    // get timestamps
-    let eastern_now = &pointer;
-    let eastern_now_timestamp = eastern_now.timestamp();
-    // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle?
-    // let (current_candle_start, current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, eastern_now);
-    // let candle_lookup_max_timestamp = current_candle_start_timestamp - 1;
-    // let expected_max_signal_snapshot_age = 120;
-    let candle_lookup_max_timestamp = eastern_now_timestamp;
-    let expected_max_signal_snapshot_age = 65;
-    // get candles
-    let candles = candles_timestamp_cache_map.get(&candle_lookup_max_timestamp).unwrap();
-    if candles.len() == 0 {
-      log::warn!("{eastern_now_timestamp}: candles.len() == 0");
-      pointer += chrono::Duration::seconds(1);
-      continue;
-    }
-    // get most recent signal signal from candles
-    let strategy = SupertrendStrategy::new();
-    let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
-    if signal_snapshots.is_empty() {
-      log::warn!("{eastern_now_timestamp}: signal_snapshots.len() == 0");
-      pointer += chrono::Duration::seconds(1);
-      continue;
-    }
-    // get direction changes from signal snapshots
-    let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
-    if direction_changes.is_empty() {
-      log::warn!("{eastern_now_timestamp}: direction_changes.len() == 0");
-      pointer += chrono::Duration::seconds(1);
-      continue;
-    }
-    let most_recent_direction_change = &direction_changes[direction_changes.len() - 1];
-    let most_recent_direction_change_start_snapshot = &signal_snapshots[most_recent_direction_change.start_snapshot_index];
-    // get current quote
-    let most_recent_quote_snapshot = quote_snapshots_timestamp_cache_map.get(&eastern_now_timestamp);
-    if most_recent_quote_snapshot.is_none() {
-      log::warn!("{eastern_now_timestamp}: most_recent_quote_snapshot.is_none()");
-      pointer += chrono::Duration::seconds(1);
-      continue;
-    }
-    let most_recent_quote_snapshot = most_recent_quote_snapshot.unwrap();
-    // check quote age
-    let quote_age = eastern_now_timestamp - most_recent_quote_snapshot.scraped_at;
-    // TODO: handle if quote_snapshot is too old/unrealistic from something like a quote_scraper process crash
-    if quote_age > 1 {
-      log::warn!("{eastern_now_timestamp}: quote_snapshot is old! quote_age = {quote_age}");
-    }
-    // check snapshot age?
-    let most_recent_signal_snapshot = &signal_snapshots[signal_snapshots.len() - 1];
-    let signal_snapshot_age = eastern_now_timestamp - most_recent_signal_snapshot.candle.timestamp;
-    if signal_snapshot_age > expected_max_signal_snapshot_age {
-      log::warn!("{eastern_now_timestamp}: signal_snapshot is old! signal_snapshot_age = {signal_snapshot_age}");
-    }
-    // check if open trade profit limited/stop lossed
-    if is_trade_open {
-      let hypothetcial_open_price = math::calculate_open_price_with_slippage(
-        last_trade_direction,
-        last_trade_open_quote.as_ref().unwrap().last_trade_price,
-        slippage_percentage,
-      );
-      let hypothetical_exit_price =
-        math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
-      let open_profit_loss_percentage = math::calculate_profit_loss_percentage(last_trade_direction, hypothetcial_open_price, hypothetical_exit_price);
-      if open_profit_loss_percentage <= stop_loss_percentage {
-        log::info!(
-          "csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},StopLoss",
-          last_trade_direction
-        );
-        log::info!("{eastern_now_timestamp}: closing trade; stop loss hit; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
-          most_recent_quote_snapshot,
-          last_trade_open_quote
-        );
-        // mark trade closed
-        total_profit_loss_percentage += stop_loss_percentage;
-        num_trades += 1;
-        is_trade_open = false;
-        last_trade_open_quote = None;
-      } else if open_profit_loss_percentage >= profit_limit_percentage {
-        log::info!(
-          "csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},ProfitLimit",
-          last_trade_direction
-        );
-        log::info!("{eastern_now_timestamp}: closing trade; profit limit hit; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
-          most_recent_quote_snapshot,
-          last_trade_open_quote
-        );
-        // mark trade closed
-        total_profit_loss_percentage += profit_limit_percentage;
-        num_trades += 1;
-        is_trade_open = false;
-        last_trade_open_quote = None;
-      }
-    }
-    // check for direction change
-    if last_trade_direction != most_recent_direction_change_start_snapshot.direction {
-      let new_direction = most_recent_direction_change_start_snapshot.direction;
-      // close any open trades
-      if is_trade_open == true {
-        let old_direction = last_trade_direction;
-        let hypothetcial_open_price =
-          math::calculate_open_price_with_slippage(old_direction, last_trade_open_quote.as_ref().unwrap().last_trade_price, slippage_percentage);
-        let hypothetical_exit_price =
-          math::calculate_close_price_with_slippage(old_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
-        let open_profit_loss_percentage = math::calculate_profit_loss_percentage(old_direction, hypothetcial_open_price, hypothetical_exit_price);
-        log::info!(
-          "csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},DirectionChange",
-          old_direction
-        );
-        log::info!(
-          "{eastern_now_timestamp}: closing trade; direction change; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
-          most_recent_quote_snapshot,
-          last_trade_open_quote
-        );
-        // mark trade closed
-        total_profit_loss_percentage += open_profit_loss_percentage;
-        num_trades += 1;
-        last_trade_open_quote = None;
-      }
-      // open new trade
-      let hypothetcial_open_price = math::calculate_open_price_with_slippage(new_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
-      log::info!("csv: open,{eastern_now_timestamp},{:?},{hypothetcial_open_price},", new_direction);
-      log::info!(
-        "{eastern_now_timestamp}: opening new trade; quote_age = {quote_age}s snapshot_age = {signal_snapshot_age}s direction = {:?} signal_snapshot = {:?} quote_snapshot = {:?}",
-        most_recent_direction_change,
-        most_recent_signal_snapshot,
-        most_recent_quote_snapshot,
-      );
-      // set state
-      last_trade_direction = most_recent_direction_change_start_snapshot.direction;
-      last_trade_open_quote.replace(most_recent_quote_snapshot.clone());
-      is_trade_open = true;
-    }
-    // check for end of day
-    if pointer == regular_market_end {
-      // close any open trades
-      if is_trade_open == true {
-        let hypothetcial_open_price = math::calculate_open_price_with_slippage(
-          last_trade_direction,
-          last_trade_open_quote.as_ref().unwrap().last_trade_price,
-          slippage_percentage,
-        );
-        let hypothetical_exit_price =
-          math::calculate_close_price_with_slippage(last_trade_direction, most_recent_quote_snapshot.last_trade_price, slippage_percentage);
-        let open_profit_loss_percentage = math::calculate_profit_loss_percentage(last_trade_direction, hypothetcial_open_price, hypothetical_exit_price);
-        log::info!(
-          "csv: close,{eastern_now_timestamp},{:?},{hypothetical_exit_price},EndOfDay",
-          last_trade_direction
-        );
-        log::info!(
-          "{eastern_now_timestamp}: closing trade; end of day; open_profit_loss_percentage = {open_profit_loss_percentage} quote_age = {quote_age}s current_quote = {:?} last_trade_open_quote = {:?}",
-          most_recent_quote_snapshot,
-          last_trade_open_quote
-        );
-        // mark trade closed
-        total_profit_loss_percentage += open_profit_loss_percentage;
-        num_trades += 1;
-        is_trade_open = false;
-        last_trade_open_quote = None;
-      }
-    }
-    // increment pointer
-    pointer += chrono::Duration::seconds(60);
-  }
-  return (num_trades, total_profit_loss_percentage);
-}
-
-fn build_caches(connection: &Database, symbol: &str, resolution: &str, date: &str) -> (HashMap<i64, Vec<Candle>>, HashMap<i64, QuoteSnapshot>) {
-  log::info!("building caches");
-  let mut candles_timestamp_cache_map = HashMap::<i64, Vec<Candle>>::new();
-  let mut quote_snapshots_timestamp_cache_map = HashMap::<i64, QuoteSnapshot>::new();
-  // times
-  let (regular_market_start, regular_market_end) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
+  // get mock now from end of day TODO: no need to walk through entire day second by second/minute by minute? use end of day direction changes as "collective" answer to what happened throughout the day
+  let eastern_now = regular_market_end.with_timezone(&Eastern);
+  let eastern_now_timestamp = eastern_now.timestamp();
   let regular_market_start_timestamp = regular_market_start.timestamp();
-  // loop over entire day second by second
-  let mut pointer = regular_market_start;
-  while pointer <= regular_market_end {
-    // get timestamps
-    let eastern_now = &pointer;
-    let eastern_now_timestamp = eastern_now.timestamp();
-    // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle?
-    // let (current_candle_start, current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, eastern_now);
-    // let candle_lookup_max_timestamp = current_candle_start_timestamp - 1;
-    let candle_lookup_max_timestamp = eastern_now_timestamp;
-    // get candles
-    let candles = get_candles_from_database(&connection, symbol, resolution, regular_market_start_timestamp, candle_lookup_max_timestamp);
-    candles_timestamp_cache_map.insert(eastern_now_timestamp, candles);
-    // get quote snapshots
-    let quote_snapshots = get_quote_snapshots_from_database(&connection, symbol, regular_market_start_timestamp, eastern_now_timestamp);
-    if quote_snapshots.len() > 0 {
-      let most_recent_quote_snapshot = &quote_snapshots[0];
-      quote_snapshots_timestamp_cache_map.insert(eastern_now_timestamp, most_recent_quote_snapshot.clone());
-    }
-    // increment
-    pointer += chrono::Duration::seconds(1);
+  let (current_candle_start, current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, &eastern_now);
+  let current_candle_index = (eastern_now_timestamp - regular_market_start_timestamp) / 60;
+  // get quotes from database
+  let quote_snapshots = get_quote_snapshots_from_database(connection, symbol, regular_market_start_timestamp, eastern_now_timestamp);
+  // get candles from database
+  // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle?
+  //let candle_lookup_max_timestamp = eastern_now_timestamp;
+  let candle_lookup_max_timestamp = current_candle_start.timestamp() - 1;
+  let candle_snapshots = get_candle_snapshots_from_database(&connection, symbol, resolution, eastern_now_timestamp, regular_market_start_timestamp, candle_lookup_max_timestamp);
+  if candle_snapshots.len() == 0 {
+    return Err("candles.len() == 0".to_string());    
   }
-  return (candles_timestamp_cache_map, quote_snapshots_timestamp_cache_map);
+  // convert candle snapshots to candles
+  let candles = candle_snapshots.into_iter().map(|candle_snapshot| {
+    return Candle {
+      timestamp: candle_snapshot.timestamp,
+      open: candle_snapshot.open,
+      high: candle_snapshot.high,
+      low: candle_snapshot.low,
+      close: candle_snapshot.close,
+      volume: candle_snapshot.volume,
+    };
+  }).collect();
+  // get recent signal signal from candles
+  let strategy = SupertrendStrategy::new();
+  let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
+  if signal_snapshots.is_empty() {
+    return Err("signal_snapshots.len() == 0".to_string());    
+  }
+  // check snapshot age?
+  let most_recent_signal_snapshot = &signal_snapshots[signal_snapshots.len() - 1];
+  let most_recent_signal_snapshot_candle_age = eastern_now_timestamp - most_recent_signal_snapshot.candle.timestamp;
+  if most_recent_signal_snapshot_candle_age > 120 {
+    log::warn!("{eastern_now_timestamp} ({current_candle_index}/390): signal_snapshot candle is old! most_recent_signal_snapshot_candle_age = {}", most_recent_signal_snapshot_candle_age);
+  }
+  // get direction changes
+  let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
+  if direction_changes.is_empty() {
+    return Err("direction_changes.len() == 0".to_string());    
+  }
+  // backtest direction changes as trades
+  let mut results = vec![];
+  for direction_change in &direction_changes {
+    let start_snapshot_index = direction_change.start_snapshot_index;
+    let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
+    let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..=end_snapshot_index];
+    let start_signal_snapshot = &trade_signal_snapshots[0];
+    let end_signal_snapshot = &trade_signal_snapshots[trade_signal_snapshots.len() - 1];
+    log::info!("{:?} {:?}", start_signal_snapshot.direction, end_signal_snapshot.direction);
+    let trade_start_timestamp = start_signal_snapshot.candle.timestamp;
+    let trade_end_timestamp = end_signal_snapshot.candle.timestamp + 59; // TODO: add 59 seconds here?
+    let mut quotes_portfolio_balance = 1000.00;
+    let mut candles_portfolio_balance = 1000.00;
+
+    let trade_quote_snapshots = get_quote_snapshots_from_database(connection, symbol, trade_start_timestamp, trade_end_timestamp);
+    let start_quote_snapshot = &trade_quote_snapshots[0];
+    let end_quote_snapshot = &trade_quote_snapshots[trade_quote_snapshots.len() - 1];
+    let quote_open_price = math::calculate_open_price_with_slippage(start_signal_snapshot.direction, start_quote_snapshot.last_trade_price, slippage_percentage);
+    let quote_exit_price = math::calculate_close_price_with_slippage(start_signal_snapshot.direction, end_quote_snapshot.last_trade_price, slippage_percentage);
+    let quote_exit_profit_loss_percentage = math::calculate_profit_loss_percentage(start_signal_snapshot.direction, quote_open_price, quote_exit_price);
+    let mut exit_quote_result = (BacktestOutcome::DirectionChange, end_quote_snapshot.clone(), quote_exit_price, quote_exit_profit_loss_percentage);
+    for trade_quote_snapshot in &trade_quote_snapshots {
+      let hypothetical_exit_price = math::calculate_close_price_with_slippage(start_signal_snapshot.direction, trade_quote_snapshot.last_trade_price, slippage_percentage);
+      let hypothetical_profit_loss_percentage = math::calculate_profit_loss_percentage(start_signal_snapshot.direction, quote_open_price, hypothetical_exit_price);
+      // always check stop loss first to be as pessimistic as possible
+      if hypothetical_profit_loss_percentage <= stop_loss_percentage {
+        exit_quote_result = (BacktestOutcome::StopLoss, trade_quote_snapshot.clone(), hypothetical_exit_price, stop_loss_percentage); // assumes we would do no better/no worse than exactly stop loss percentage?
+        break;
+      }
+      if hypothetical_profit_loss_percentage >= profit_limit_percentage {
+        exit_quote_result = (BacktestOutcome::ProfitLimit, trade_quote_snapshot.clone(), hypothetical_exit_price, profit_limit_percentage); // assumes we would do no better/no worse than exactly profit limit percentage?
+        break;
+      }
+    }
+    quotes_portfolio_balance *= (1.0 + exit_quote_result.3);
+
+    let candle_open_price = math::calculate_open_price_with_slippage(start_signal_snapshot.direction, start_signal_snapshot.candle.open, slippage_percentage);
+    let candle_exit_price = math::calculate_close_price_with_slippage(start_signal_snapshot.direction, end_signal_snapshot.candle.close, slippage_percentage); // TODO: would probably get out on next candle open instead of last candle close? but we don't include this next candle on purpose?
+    let candle_exit_profit_loss_percentage = math::calculate_profit_loss_percentage(start_signal_snapshot.direction, candle_open_price, candle_exit_price);
+    let mut exit_candle_result = (BacktestOutcome::DirectionChange, end_signal_snapshot.clone(), candle_exit_price, candle_exit_profit_loss_percentage);
+    for trade_signal_snapshot in trade_signal_snapshots {
+      let best_case_scenario_price = math::calculate_best_case_scenario_price(start_signal_snapshot.direction, &trade_signal_snapshot.candle);
+      let worst_case_scenario_price = math::calculate_worst_case_scenario_price(start_signal_snapshot.direction, &trade_signal_snapshot.candle);
+      let hypothetical_best_case_scenario_price = math::calculate_close_price_with_slippage(start_signal_snapshot.direction, best_case_scenario_price, slippage_percentage);
+      let hypothetical_worst_case_scenario_price = math::calculate_close_price_with_slippage(start_signal_snapshot.direction, worst_case_scenario_price, slippage_percentage);
+      let hypothetical_best_case_profit_loss_percentage = math::calculate_profit_loss_percentage(start_signal_snapshot.direction, candle_open_price, hypothetical_best_case_scenario_price);
+      let hypothetical_worst_case_profit_loss_percentage = math::calculate_profit_loss_percentage(start_signal_snapshot.direction, candle_open_price, hypothetical_worst_case_scenario_price);
+      // always check stop loss first to be as pessimistic as possible
+      if hypothetical_worst_case_profit_loss_percentage <= stop_loss_percentage {
+        exit_candle_result = (BacktestOutcome::StopLoss, trade_signal_snapshot.clone(), hypothetical_worst_case_scenario_price, stop_loss_percentage); // assumes we would do no better/no worse than exactly stop loss percentage?
+        break;
+      }
+      if hypothetical_best_case_profit_loss_percentage >= profit_limit_percentage {
+        exit_candle_result = (BacktestOutcome::ProfitLimit, trade_signal_snapshot.clone(), hypothetical_best_case_scenario_price, profit_limit_percentage); // assumes we would do no better/no worse than exactly profit limit percentage?
+        break;
+      }
+    }
+    candles_portfolio_balance *= (1.0 + exit_candle_result.3);
+
+    results.push(serde_json::json!({
+      "direction": start_signal_snapshot.direction,
+      "mode": "quote",
+      "start": {
+        "timestamp": start_quote_snapshot.scraped_at,
+        "price": start_quote_snapshot.last_trade_price
+      },
+      "end": {
+        "timestamp": end_quote_snapshot.scraped_at,
+        "price": end_quote_snapshot.last_trade_price
+      },
+      "exit": {
+        "outcome": exit_quote_result.0,
+        "timestamp": exit_quote_result.1.scraped_at,
+        "price": exit_quote_result.2,
+        "profit_loss_percentage": exit_quote_result.3,
+      },
+      "balance": quotes_portfolio_balance
+    }));
+    results.push(serde_json::json!({
+      "direction": start_signal_snapshot.direction,
+      "mode": "candle",
+      "start": {
+        "timestamp": start_signal_snapshot.candle.timestamp,
+        "price": start_signal_snapshot.candle.open
+      },
+      "end": {
+        "timestamp": end_signal_snapshot.candle.timestamp,
+        "price": end_signal_snapshot.candle.open
+      },
+      "exit": {
+        "outcome": exit_candle_result.0,
+        "timestamp": exit_candle_result.1.candle.timestamp,
+        "price": exit_candle_result.2,
+        "profit_loss_percentage": exit_candle_result.3,
+      },
+      "balance": candles_portfolio_balance
+    }));
+  }
+  log::info!("{}", serde_json::to_string(&results).unwrap());
+  return Ok(());
 }
 
 fn main() {
@@ -296,45 +201,17 @@ fn main() {
     // config
     let symbol = "SPY";
     let resolution = "1";
+    let warmed_up_index = 10; // TODO: 10 or 9 or 0 or something different?
+    let indicator_settings = SupertrendStrategyIndicatorSettings {
+      supertrend_periods: 10,
+      supertrend_multiplier: 3.00,
+    };
     // open database
-    let connection = Database::new("./database.db");
+    let connection = database::Database::new("./database.db");
     // init database tables
     connection.migrate("./schema/");
-    // time
-    let date = "2023-01-31 00:00:00";
-    // cache data from database
-    /*let (candles_timestamp_cache_map, quote_snapshots_timestamp_cache_map) = build_caches(&connection, symbol, resolution, date);
-    log::info!("writing caches to files");
-    file::write_json_to_file("./cache/candles-2023-01-31.json", &candles_timestamp_cache_map).await;
-    file::write_json_to_file("./cache/quotes-2023-01-31.json", &quote_snapshots_timestamp_cache_map).await;
-    log::info!("wrote caches to files");*/
-    // load caches from files
-    log::info!("loading cache from files");
-    let candles_timestamp_cache_map = file::read_json_from_file("./cache/candles-2023-01-31.json").await;
-    let quote_snapshots_timestamp_cache_map = file::read_json_from_file("./cache/quotes-2023-01-31.json").await;
-    log::info!("loaded cache from files");
-    // build combinations
-    let combinations = combinations::build_combinations();
-    log::info!("num_combinations = {}", combinations.len());
-    // backtest combinations
-    let num_tested = std::sync::atomic::AtomicUsize::new(0);
-    let mut results: Vec<(BacktestCombination, usize, f64)> = combinations
-      .into_iter()
-      .map(|combination| {
-        let (num_trades, total_profit_loss_percentage) =
-          backtest_combination(&candles_timestamp_cache_map, &quote_snapshots_timestamp_cache_map, date, &combination);
-        let num_tested = num_tested.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        if num_tested % 100 == 0 {
-          log::info!("num_tested = {}", num_tested);
-        }
-        return (combination, num_trades, total_profit_loss_percentage);
-      })
-      .collect();
-    // sort by total_profit_loss_percentage descending
-    results.sort_by(|a, b| {
-      return b.2.partial_cmp(&a.2).unwrap();
-    });
-    let best_result = &results[0];
-    log::info!("best_result = {:?}", best_result);
+    // backtest
+    let date = "2023-02-01 00:00:00";    
+    let result = backtest_date(&connection, symbol, resolution, warmed_up_index, &indicator_settings, date);
   });
 }
