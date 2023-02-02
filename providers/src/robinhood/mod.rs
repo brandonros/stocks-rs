@@ -3,6 +3,7 @@ pub mod helpers;
 pub mod structs;
 
 use self::structs::*;
+use anyhow::Result;
 use common::http_client;
 use futures::StreamExt;
 use log::info;
@@ -49,7 +50,7 @@ impl Robinhood {
   }
 
   // TODO: use this instead of ROBINHOOD_API_TOKEN env var but it doesn't work for get_options_market_data_chunk (401s)
-  pub async fn get_logged_out_access_token(&self) -> Result<String, String> {
+  pub async fn get_logged_out_access_token(&self) -> Result<String> {
     log::info!("get_logged_out_access_token");
     let request_headers = vec![
       (String::from("origin"), String::from("https://robinhood.com")),
@@ -63,7 +64,7 @@ impl Robinhood {
     // TODO: retries?
     let result = http_client::http_request_text(&self.http_client, "GET", &url, &request_headers, &None).await;
     if result.is_err() {
-      return Err(format!("{:?}", result));
+      return Err(anyhow::anyhow!("{:?}", result));
     }
     let (response_headers, _response_body) = result.unwrap();
     let set_cookie_header_value = response_headers.get("set-cookie").unwrap().to_str().unwrap();
@@ -72,7 +73,7 @@ impl Robinhood {
     return Ok(parsed_cookie_value.to_owned());
   }
 
-  pub async fn get_quote(&self, token: &str, symbol: &str) -> Result<Quote, String> {
+  pub async fn get_quote(&self, token: &str, symbol: &str) -> Result<Quote> {
     log::info!("get_quote: symbol = {}", symbol);
     let quote_id = self.get_quote_id_from_symbol(symbol);
     let url = format!("https://api.robinhood.com/marketdata/quotes/{}/?bounds=trading", quote_id);
@@ -90,7 +91,7 @@ impl Robinhood {
     .await;
   }
 
-  pub async fn get_chain(&self, token: &str, symbol: &str) -> Result<Chain, String> {
+  pub async fn get_chain(&self, token: &str, symbol: &str) -> Result<Chain> {
     info!("get_chain: symbol = {}", symbol);
     let chain_id = self.get_chain_id_from_symbol(symbol);
     let url = format!("https://api.robinhood.com/options/chains/{}/", chain_id);
@@ -117,7 +118,7 @@ impl Robinhood {
     state: &str,
     r#type: &str,
     cursor: Option<String>,
-  ) -> Result<Vec<OptionInstrument>, String> {
+  ) -> Result<Vec<OptionInstrument>> {
     info!(
       "get_options_instruments: symbol = {} expiration_date = {} state = {} type = {} cursor = {:?}",
       symbol, expiration_date, state, r#type, cursor
@@ -145,7 +146,7 @@ impl Robinhood {
     )
     .await;
     if response.is_err() {
-      return Err(format!("{:?}", response));
+      return Err(anyhow::anyhow!("{:?}", response));
     }
     let mut response = response.unwrap();
     let mut results = vec![];
@@ -159,7 +160,7 @@ impl Robinhood {
         .get_options_instruments(token, chain_id, expiration_date, state, r#type, Some(next_cursor))
         .await;
       if next_page.is_err() {
-        return Err(format!("{:?}", next_page));
+        return Err(anyhow::anyhow!("{:?}", next_page));
       }
       let mut next_page = next_page.unwrap();
       results.append(&mut next_page);
@@ -167,7 +168,7 @@ impl Robinhood {
     return Ok(results);
   }
 
-  pub async fn get_options_market_data_chunk(&self, token: &str, instrument_ids_chunk: &[String]) -> Result<Vec<OptionMarketData>, String> {
+  pub async fn get_options_market_data_chunk(&self, token: &str, instrument_ids_chunk: &[String]) -> Result<Vec<OptionMarketData>> {
     info!("get_options_market_data_chunk");
     let joined_instrument_ids = instrument_ids_chunk.join(",");
     let mut base_url = url::Url::parse("https://api.robinhood.com/marketdata/options/").unwrap();
@@ -186,7 +187,7 @@ impl Robinhood {
     )
     .await;
     if response.is_err() {
-      return Err(format!("{:?}", response));
+      return Err(anyhow::anyhow!("{:?}", response));
     }
     let response = response.unwrap();
     let chunk_results: Vec<OptionMarketData> = response
@@ -202,7 +203,7 @@ impl Robinhood {
     return Ok(chunk_results);
   }
 
-  pub async fn get_options_market_data(&self, token: &str, instrument_ids: &Vec<String>) -> Result<Vec<OptionMarketData>, String> {
+  pub async fn get_options_market_data(&self, token: &str, instrument_ids: &Vec<String>) -> Result<Vec<OptionMarketData>> {
     info!("get_options_market_data instrument_ids.len() = {}", instrument_ids.len());
     let chunk_size = 128;
     let instrument_ids_chunks: Vec<Vec<String>> = instrument_ids.chunks(chunk_size).map(|s| s.to_vec()).collect();
@@ -213,7 +214,7 @@ impl Robinhood {
     let results = futures::stream::iter(futures).buffer_unordered(concurrency).collect::<Vec<_>>().await;
     for result in &results {
       if result.is_err() {
-        return Err(format!("{:?}", result));
+        return Err(anyhow::anyhow!("{:?}", result));
       }
     }
     let flattened_results: Vec<OptionMarketData> = results.into_iter().map(|result| result.unwrap()).flatten().collect();
@@ -228,7 +229,7 @@ impl Robinhood {
     r#type: &str,
     min_strike: f64,
     max_strike: f64,
-  ) -> Result<OptionSeries, String> {
+  ) -> Result<OptionSeries> {
     info!(
       "get_options_series_by_type: symbol = {} expiration_date = {} type = {}",
       symbol, expiration_date, r#type
@@ -236,7 +237,7 @@ impl Robinhood {
     let chain_id = self.get_chain_id_from_symbol(symbol);
     let options = self.get_options_instruments(token, chain_id, expiration_date, "active", r#type, None).await;
     if options.is_err() {
-      return Err(format!("{:?}", options));
+      return Err(anyhow::anyhow!("{:?}", options));
     }
     let options = options.unwrap();
     let filtered_options: Vec<OptionInstrument> = options
@@ -250,7 +251,7 @@ impl Robinhood {
     let option_ids: Vec<String> = filtered_options.iter().map(|option| option.id.to_owned()).collect();
     let options_quotes = self.get_options_market_data(token, &option_ids).await;
     if options_quotes.is_err() {
-      return Err(format!("{:?}", options_quotes));
+      return Err(anyhow::anyhow!("{:?}", options_quotes));
     }
     let options_quotes = options_quotes.unwrap();
     // return
@@ -260,26 +261,26 @@ impl Robinhood {
     });
   }
 
-  pub async fn get_options_series(&self, token: &str, symbol: &str, expiration_date: &str, min_strike: f64, max_strike: f64) -> Result<OptionSeries, String> {
+  pub async fn get_options_series(&self, token: &str, symbol: &str, expiration_date: &str, min_strike: f64, max_strike: f64) -> Result<OptionSeries> {
     info!("get_options_series: symbol = {} expiration_date = {}", symbol, expiration_date);
     let chain_id = self.get_chain_id_from_symbol(symbol);
     let call_future = self.get_options_series_by_type(token, chain_id, expiration_date, "call", min_strike, max_strike);
     let put_future = self.get_options_series_by_type(token, chain_id, expiration_date, "put", min_strike, max_strike);
     let futures = vec![call_future, put_future];
     let results = futures::future::join_all(futures).await;
-    let call_option_series = results.get(0).unwrap().to_owned();
-    let put_option_series = results.get(1).unwrap().to_owned();
+    let call_option_series = results.get(0).unwrap();
+    let put_option_series = results.get(1).unwrap();
     if call_option_series.is_err() {
-      return Err(format!("{:?}", call_option_series));
+      return Err(anyhow::anyhow!("{:?}", call_option_series));
     }
     if put_option_series.is_err() {
-      return Err(format!("{:?}", put_option_series));
+      return Err(anyhow::anyhow!("{:?}", put_option_series));
     }
-    let call_option_series = call_option_series.unwrap();
-    let put_option_series = put_option_series.unwrap();
+    let call_option_series = call_option_series.as_ref().unwrap().clone();
+    let put_option_series = put_option_series.as_ref().unwrap().clone();
     let mut options = vec![];
-    options.extend(call_option_series.options.to_owned());
-    options.extend(put_option_series.options.to_owned());
+    options.extend(call_option_series.options);
+    options.extend(put_option_series.options);
     let mut options_quotes = vec![];
     options_quotes.extend(call_option_series.options_quotes);
     options_quotes.extend(put_option_series.options_quotes);

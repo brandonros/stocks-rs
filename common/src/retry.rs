@@ -1,22 +1,23 @@
 use log::warn;
 use std::future::Future;
+use anyhow::Result;
 
-pub async fn timeout_wrapper<Fut, T>(timeout_ms: u64, cb: &impl Fn() -> Fut) -> Result<T, String>
+pub async fn timeout_wrapper<Fut, T>(timeout_ms: u64, cb: &impl Fn() -> Fut) -> Result<T>
 where
-  Fut: Future<Output = Result<T, String>>,
+  Fut: Future<Output = Result<T>>,
 {
   let request_future = cb();
   let timeout_future = tokio::time::timeout(tokio::time::Duration::from_millis(timeout_ms), request_future).await;
   if timeout_future.is_err() {
-    return Err(String::from("timed out"));
+    return Err(anyhow::anyhow!("timed out"));
   }
   let response = timeout_future.unwrap();
   return response;
 }
 
-pub async fn retry_wrapper<Fut, T>(known_errors: &[&str], retry_delay_ms: u64, num_retries: usize, cb: &impl Fn() -> Fut) -> Result<T, String>
+pub async fn retry_wrapper<Fut, T>(known_errors: &[&str], retry_delay_ms: u64, num_retries: usize, cb: &impl Fn() -> Fut) -> Result<T>
 where
-  Fut: Future<Output = Result<T, String>>,
+  Fut: Future<Output = Result<T>>,
 {
   for attempt in 0..num_retries {
     let result = cb().await;
@@ -26,16 +27,16 @@ where
     }
     let error_message = result.err().unwrap();
     let is_error_known = known_errors.iter().cloned().position(|known_error| {
-      return error_message.contains(&known_error);
+      return format!("{:?}", error_message).contains(&known_error);
     });
     if is_error_known.is_none() {
-      return Err(format!("unknown error: {}", error_message));
+      return Err(anyhow::anyhow!("unknown error: {}", error_message));
     }
     warn!("retry # {} / {}: {}", attempt, num_retries, error_message);
     // sleep
     tokio::time::sleep(tokio::time::Duration::from_millis(retry_delay_ms)).await;
   }
-  return Err(format!("request failed after {} retries", num_retries));
+  return Err(anyhow::anyhow!("request failed after {} retries", num_retries));
 }
 
 pub async fn retry_timeout_wrapper<Fut, T>(
@@ -44,9 +45,9 @@ pub async fn retry_timeout_wrapper<Fut, T>(
   num_retries: usize,
   timeout_ms: u64,
   cb: impl Fn() -> Fut,
-) -> Result<T, String>
+) -> Result<T>
 where
-  Fut: Future<Output = Result<T, String>>,
+  Fut: Future<Output = Result<T>>,
 {
   let timeout_cb = || {
     return timeout_wrapper(timeout_ms, &cb);

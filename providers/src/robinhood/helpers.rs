@@ -1,14 +1,15 @@
 use chrono::Utc;
 use futures::StreamExt;
+use anyhow::Result;
 
 use super::{structs::*, Robinhood};
 
-pub async fn get_expiration_dates(token: &str, symbol: &str) -> Result<Vec<String>, String> {
+pub async fn get_expiration_dates(token: &str, symbol: &str) -> Result<Vec<String>> {
   let robinhood = Robinhood::new();
   let chain_id = robinhood.get_chain_id_from_symbol(symbol);
   let chain = robinhood.get_chain(token, chain_id).await;
   if chain.is_err() {
-    return Err(format!("{:?}", chain));
+    return Err(anyhow::anyhow!("{:?}", chain));
   }
   let chain = chain.unwrap();
   let expiration_dates = chain.expiration_dates;
@@ -20,11 +21,11 @@ pub async fn scrape_symbol_expiration_date_options_chain(
   symbol: &str,
   expiration_date: &str,
   strike_price_threshold: f64,
-) -> Result<OptionSeries, String> {
+) -> Result<OptionSeries> {
   let robinhood = Robinhood::new();
   let quote = robinhood.get_quote(token, symbol).await;
   if quote.is_err() {
-    return Err(format!("{:?}", quote));
+    return Err(anyhow::anyhow!("{:?}", quote));
   }
   let quote = quote.unwrap();
   let quote_ask_price = quote.ask_price.parse::<f64>().unwrap();
@@ -40,11 +41,11 @@ pub async fn scrape_symbol_options_chain(
   symbol: &str,
   strike_price_threshold: f64,
   days_to_expiration_threshold: f64,
-) -> Result<Vec<OptionSeries>, String> {
+) -> Result<Vec<OptionSeries>> {
   let now = Utc::now().naive_utc();
   let expiration_dates = get_expiration_dates(token, symbol).await;
   if expiration_dates.is_err() {
-    return Err(format!("{:?}", expiration_dates));
+    return Err(anyhow::anyhow!("{:?}", expiration_dates));
   }
   let expiration_dates = expiration_dates.unwrap();
   let filtered_expiration_dates: Vec<String> = expiration_dates
@@ -64,7 +65,7 @@ pub async fn scrape_symbol_options_chain(
   let results = futures::stream::iter(futures).buffer_unordered(concurrency).collect::<Vec<_>>().await;
   for result in &results {
     if result.is_err() {
-      return Err(format!("{:?}", result));
+      return Err(anyhow::anyhow!("{:?}", result));
     }
   }
   let flattened_results: Vec<OptionSeries> = results.into_iter().map(|result| result.unwrap()).collect();

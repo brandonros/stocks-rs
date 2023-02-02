@@ -34,3 +34,5 @@ url = "2.3.1"
 cookie = "0.16"
 # regex
 regex = { version = "1.7" }
+# error handling
+anyhow = "1.0.68"

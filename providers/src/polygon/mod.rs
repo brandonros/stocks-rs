@@ -1,5 +1,6 @@
 pub mod structs;
 
+use anyhow::Result;
 use chrono::DateTime;
 use chrono_tz::Tz;
 use common::http_client;
@@ -17,7 +18,7 @@ impl Polygon {
     };
   }
 
-  pub async fn get_candles(&self, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>, String> {
+  pub async fn get_candles(&self, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>> {
     let from_timestamp = from.timestamp_millis();
     let to_timestamp = to.timestamp_millis();
     log::info!("get_candles symbol = {} resolution = {} from = {} to = {}", symbol, resolution, from, to);

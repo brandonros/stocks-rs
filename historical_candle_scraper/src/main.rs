@@ -29,7 +29,8 @@ fn main() {
       // get candles
       let result = providers::get_candles_by_provider_name(provider_name, symbol, resolution, from, to).await;
       if result.is_err() {
-        panic!("TODO");
+        log::error!("{:?}", result);
+        continue;
       }
       let candles = result.unwrap();
       log::info!("got {} candles for {}", candles.len(), date);

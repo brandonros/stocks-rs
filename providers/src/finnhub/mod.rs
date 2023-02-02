@@ -1,5 +1,6 @@
 pub mod structs;
 
+use anyhow::Result;
 use chrono::DateTime;
 use chrono_tz::Tz;
 use common::http_client;
@@ -17,7 +18,7 @@ impl Finnhub {
     };
   }
 
-  pub async fn get_candles(&self, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>, String> {
+  pub async fn get_candles(&self, symbol: &str, resolution: &str, from: DateTime<Tz>, to: DateTime<Tz>) -> Result<Vec<Candle>> {
     log::info!("get_candles symbol = {} resolution = {} from = {} to = {}", symbol, resolution, from, to);
     let mut request_url = url::Url::parse("https://finnhub.io/api/v1/stock/candle").unwrap();
     request_url.query_pairs_mut().append_pair("symbol", symbol);
@@ -27,11 +28,7 @@ impl Finnhub {
     let request_url = request_url.as_str().to_string();
     let finnhub_api_token = std::env::var("FINNHUB_API_TOKEN").unwrap();
     let request_headers = vec![(String::from("X-Finnhub-Token"), finnhub_api_token)];
-    let result = http_client::http_request_json::<FinnhubStockCandlesResponse>(&self.http_client, "GET", &request_url, &request_headers, &None).await;
-    if result.is_err() {
-      return Err(result.err().unwrap());
-    }
-    let response_body = result.unwrap();
+    let response_body = http_client::http_request_json::<FinnhubStockCandlesResponse>(&self.http_client, "GET", &request_url, &request_headers, &None).await?;
     let timestamps = &response_body.t;
     let opens = &response_body.o;
     let highs = &response_body.h;
