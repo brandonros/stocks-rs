@@ -28,24 +28,6 @@ pub struct FinnhubStockCandlesResponse {
 }
 
 #[derive(Serialize, Clone, Debug)]
-pub struct BacktestResult {
-  pub open_price: f64,
-  pub exit_price: f64,
-  pub profit_limit_price: f64,
-  pub stop_loss_price: f64,
-  pub outcome: BacktestOutcome,
-  pub trade_entry_snapshot: SignalSnapshot,
-  pub trade_peak_snapshot: SignalSnapshot,
-  pub trade_trough_snapshot: SignalSnapshot,
-  pub trade_exit_snapshot: SignalSnapshot,
-  pub trade_peak_profit_loss_percentage: f64,
-  pub trade_trough_profit_loss_percentage: f64,
-  pub trade_duration: i64,
-  pub profit_loss: f64,
-  pub profit_loss_percentage: f64,
-}
-
-#[derive(Serialize, Clone, Debug)]
 pub struct BacktestStatistics {
   pub total_profit_percentage: f64,
   pub total_win_profit_percentage: f64,

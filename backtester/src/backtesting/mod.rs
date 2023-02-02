@@ -208,7 +208,8 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
   log::info!("{:?}", highest_combination_result.1);
   log::info!("{:?}", highest_combination_result.2);
   let backtest_results = &highest_combination_result.3;
-  for backtest_result in backtest_results {
+  log::info!("{}", serde_json::to_string(&backtest_results).unwrap());
+  /*for backtest_result in backtest_results {
     log::info!(
       "open,{},{:?},{},",
       backtest_result.trade_entry_snapshot.candle.timestamp,
@@ -222,7 +223,7 @@ pub async fn backtest(symbol: &str, resolution: &str, provider: &Provider, strat
       backtest_result.exit_price,
       backtest_result.outcome
     );
-  }
+  }*/
 }
 
 #[cfg(test)]
