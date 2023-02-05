@@ -35,7 +35,6 @@ fn get_candle_snapshots_from_database(connection: &Database, symbol: &str, resol
 
 fn determine_trade_result(slippage_percentage: f64, profit_limit_percentage: f64, stop_loss_percentage: f64, trade_signal_snapshots: &[SignalSnapshot]) -> ReducedBacktestResult {
   let start_signal_snapshot = &trade_signal_snapshots[0];
-  let end_signal_snapshot = &trade_signal_snapshots[trade_signal_snapshots.len() - 1];
   // assume we put an order in to open a position at the start of new candle (open price) and get filled with some slippage
   let open_price = math::calculate_open_price_with_slippage(start_signal_snapshot.direction, start_signal_snapshot.candle.open, slippage_percentage);
   // calculate profit limit + stop loss based on fill price without any exit slippage?
@@ -65,6 +64,7 @@ fn determine_trade_result(slippage_percentage: f64, profit_limit_percentage: f64
         profit_loss_percentage: math::round(stop_loss_percentage, 5) // assume no better or worse than stop loss percentage exactly?
       };
     }
+    // check profit limit
     if hypothetical_best_case_profit_loss_percentage >= profit_limit_percentage {
       let exit_price = profit_limit_price; // TODO: add slippage to exit? we would have opened a profit limit and a stop loss (or stop limit?) order at the time of open/fill
       let profit_loss = math::calculate_profit_loss(start_signal_snapshot.direction, open_price, exit_price);
@@ -81,8 +81,42 @@ fn determine_trade_result(slippage_percentage: f64, profit_limit_percentage: f64
         profit_loss_percentage: math::round(profit_limit_percentage, 5) // assume no better or worse than profit limit percentage exactly?
       };
     }
+    // handle direction changes in pyramiding backtest mode instead of 1:1 direction change single entry backtest mode
+    if trade_signal_snapshot.direction != start_signal_snapshot.direction {
+      let exit_price = math::calculate_close_price_with_slippage(start_signal_snapshot.direction, trade_signal_snapshot.candle.close, slippage_percentage); // TODO: would probably get out on next candle open instead of last candle close? but we don't include this next candle on purpose? / add slippage to exit?
+      let exit_profit_loss_percentage = math::calculate_profit_loss_percentage(start_signal_snapshot.direction, open_price, exit_price);
+      // peg losses to be at worst stop loss percentage/at best profit limit percentage
+      let exit_price = if exit_profit_loss_percentage < stop_loss_percentage {
+        stop_loss_price
+      } else if exit_profit_loss_percentage > profit_limit_percentage {
+        profit_limit_price
+      } else {
+        exit_price
+      };
+      let exit_profit_loss_percentage = if exit_profit_loss_percentage < stop_loss_percentage {
+        stop_loss_percentage
+      } else if exit_profit_loss_percentage > profit_limit_percentage {
+        profit_limit_percentage
+      } else {
+        exit_profit_loss_percentage
+      };
+      let exit_profit_loss = math::calculate_profit_loss(start_signal_snapshot.direction, open_price, exit_price);
+      return ReducedBacktestResult {
+        open_price: math::round(open_price, 2),
+        exit_price: math::round(exit_price, 2),
+        profit_limit_price: math::round(profit_limit_price, 2),
+        stop_loss_price: math::round(stop_loss_price, 2),
+        outcome: BacktestOutcome::DirectionChange,
+        trade_entry_snapshot: start_signal_snapshot.clone(),
+        trade_exit_snapshot: trade_signal_snapshot.clone(),
+        trade_duration: trade_signal_snapshot.candle.timestamp - start_signal_snapshot.candle.timestamp,
+        profit_loss: math::round(exit_profit_loss, 2),
+        profit_loss_percentage: math::round(exit_profit_loss_percentage, 5) // assume no better or worse than profit limit percentage exactly?
+      };
+    }
   }
   // direction change
+  let end_signal_snapshot = &trade_signal_snapshots[trade_signal_snapshots.len() - 1];
   let exit_price = math::calculate_close_price_with_slippage(start_signal_snapshot.direction, end_signal_snapshot.candle.close, slippage_percentage); // TODO: would probably get out on next candle open instead of last candle close? but we don't include this next candle on purpose? / add slippage to exit?
   let exit_profit_loss_percentage = math::calculate_profit_loss_percentage(start_signal_snapshot.direction, open_price, exit_price);
   // peg losses to be at worst stop loss percentage/at best profit limit percentage
@@ -148,7 +182,7 @@ fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &st
     return Err("signal_snapshots.len() == 0".to_string());    
   }
   // calculate results
-  let mode = "single_entry";
+  let mode = "pyramiding";
   if mode == "single_entry" {
     // check snapshot age?
     let most_recent_signal_snapshot = &signal_snapshots[signal_snapshots.len() - 1];
@@ -196,11 +230,7 @@ fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &st
       }
       let trade_result = determine_trade_result(slippage_percentage, profit_limit_percentage, stop_loss_percentage, trade_signal_snapshots);
       let num_snapshots = (trade_result.trade_duration / 60) as usize; // TODO: assume 1 minute candles
-      if num_snapshots == 0 {
-        index += 1; // need to move forward by at least 1 minute to prevent infinite loop?
-      } else {
-        index += num_snapshots; // TODO: are we out at east 1 minute in between trades? otherwise it is super unrealistic that we close the previous trade and open the next all at candle.open?
-      }
+      index += num_snapshots + 1; // TODO: are we out at east 1 minute in between trades? otherwise it is super unrealistic that we close the previous trade and open the next all at candle.open?
       results.push(trade_result);
     }
     return Ok(results);
@@ -226,6 +256,8 @@ fn main() {
     // open database
     let database_filename = format!("./database-{}.db", provider_name);
     let connection = database::Database::new(&database_filename);
+    // init database tables
+    connection.migrate("./schema/");
     // build cache
     let mut candles_map = HashMap::new();
     for date in &dates {
@@ -242,11 +274,10 @@ fn main() {
       candles_map.insert(date.clone(), candle_snapshots);
     }
     // build combinations
-    let combinations = combinations::build_combinations("cartesian");
+    let combinations_mode = "cartesian";
+    let combinations = combinations::build_combinations(combinations_mode);
     let num_combinations = combinations.len();
     log::info!("{} combinations", num_combinations);
-    // init database tables
-    connection.migrate("./schema/");
     // backtest
     let start = std::time::Instant::now();
     let backtest_results: Vec<(BacktestStatistic, BacktestCombination)> = vec![];
@@ -280,8 +311,8 @@ fn main() {
           //log::error!("{} {:?}", date, results.err());
           continue;
         }
-        num_days += 1;
         let results = results.unwrap();
+        num_days += 1;
         for result in &results {
           balance *= 1.0 + result.profit_loss_percentage;
           if result.outcome == BacktestOutcome::ProfitLimit {

@@ -5,12 +5,19 @@ use rust_decimal_macros::dec;
 
 pub fn build_combinations(mode: &str) -> Vec<BacktestCombination> {
   if mode == "static" {
-    return vec![BacktestCombination {
+    /*return vec![BacktestCombination {
       supertrend_periods: 10,
       supertrend_multiplier: 3.0,
       profit_limit_percentage: 0.005,
       stop_loss_percentage: -0.01,
       warmed_up_index: 0,
+    }];*/
+    return vec![BacktestCombination {
+      supertrend_periods: 5,
+      supertrend_multiplier: 2.0,
+      profit_limit_percentage: 0.0025,
+      stop_loss_percentage: -0.00125,
+      warmed_up_index: 5,
     }];
   }
   //let warmed_up_indices: Vec<usize> = (0..30).step_by(1).collect();
@@ -33,7 +40,7 @@ pub fn build_combinations(mode: &str) -> Vec<BacktestCombination> {
   // 2023-01-01 00:00:00-2023-02-04 00:00:00: (0.2107, 164, 19, BacktestCombination { supertrend_periods: 5, supertrend_multiplier: 3.75, profit_limit_percentage: 0.0055, stop_loss_percentage: -0.01, warmed_up_index: 0 })
   // 2023-01-01 00:00:00-2023-02-04 00:00:00: (0.19637, 152, 19, BacktestCombination { supertrend_periods: 5, supertrend_multiplier: 4.0, profit_limit_percentage: 0.01, stop_loss_percentage: -0.01, warmed_up_index: 0 })
   let supertrend_multipliers = utilities::build_decimal_range(dec!(0.25), dec!(4.0), dec!(0.25));
-  //let supertrend_multipliers = vec![dec!(1.00)];
+  //let supertrend_multipliers = vec![dec!(2.00)];
   //let profit_limit_percentages = utilities::build_decimal_range(dec!(0.0005), dec!(0.01), dec!(0.0005));
   let profit_limit_percentages = utilities::build_decimal_range(dec!(0.0005), dec!(0.0025), dec!(0.0005));
   //let stop_loss_percentages = utilities::build_decimal_range(dec!(-0.01), dec!(-0.0005), dec!(0.0005));

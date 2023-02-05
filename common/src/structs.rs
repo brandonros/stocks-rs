@@ -132,14 +132,14 @@ pub struct CandleSnapshot {
   pub volume: i64,
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum BacktestOutcome {
   ProfitLimit,
   StopLoss,
   DirectionChange,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BacktestResult {
   pub open_price: f64,
   pub exit_price: f64,
