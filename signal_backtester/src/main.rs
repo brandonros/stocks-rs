@@ -171,11 +171,11 @@ fn main() {
     // init database tables
     connection.migrate("./schema/");
     // backtest
-    let date = "2023-02-01 00:00:00";    
+    let date = "2023-02-02 00:00:00";    
     let results = backtest_date(&connection, symbol, resolution, warmed_up_index, &indicator_settings, slippage_percentage, profit_limit_percentage, stop_loss_percentage, date).unwrap();
     let mut balance = 1000.00;
     for result in &results {
-      balance *= (1.0 + result.profit_loss_percentage);
+      balance *= 1.0 + result.profit_loss_percentage;
     }
     let profit_loss_percentage = math::calculate_percentage_increase(1000.00, balance);
     log::info!("profit_loss_percentage = {profit_loss_percentage} num_trades = {num_trades}", num_trades = results.len());

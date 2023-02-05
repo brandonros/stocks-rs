@@ -1,8 +1,7 @@
-use chrono::{DateTime, Datelike, Utc, Weekday};
-use chrono_tz::{Tz, US::Eastern};
+use chrono::{Datelike, Utc, Weekday};
+use chrono_tz::{US::Eastern};
 use common::{
-  database::{self, ToQuery},
-  structs::*,
+  database,
   utilities,
 };
 
