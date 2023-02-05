@@ -15,6 +15,7 @@ pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
       pointer = pointer.checked_add_days(Days::new(1)).unwrap();
       continue;
     }
+    let formatted_timestamp = datetime.format("%Y-%m-%d 00:00:00").to_string();
     // TODO: holidays?
     /*
     ? - new year's day
@@ -26,10 +27,12 @@ pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
     2022-07-04 - independence day
     2022-09-05 - labor day
     2022-11-24 - day before thanksgiving
+    2022-11-25 - day after thanksgiving (closes at 1pm)
     2022-12-26 - day after christmas
     */
-    let formatted_timestamp = datetime.format("%Y-%m-%d 00:00:00").to_string();
-    results.push(formatted_timestamp);
+    if formatted_timestamp != "2022-11-25 00:00:00" {
+      results.push(formatted_timestamp);
+    }
     pointer = pointer.checked_add_days(Days::new(1)).unwrap();
   }
   return results;

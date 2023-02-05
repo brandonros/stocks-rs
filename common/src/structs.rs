@@ -173,6 +173,7 @@ pub struct ReducedBacktestResult {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BacktestStatistic {
+  pub compounded_profit_loss_percentage: f64,
   pub profit_loss_percentage: f64,
   pub profit_loss_percentage_from_losses: f64,
   pub profit_loss_percentage_from_wins: f64,
