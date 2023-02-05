@@ -1,10 +1,18 @@
+mod combinations;
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
 use chrono_tz::US::Eastern;
+use combinations::BacktestCombination;
 use common::database::Database;
 use common::{structs::*, math};
 use common::{database};
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use strategies::supertrend::{SupertrendStrategy, SupertrendStrategyIndicatorSettings};
 
 fn get_candle_snapshots_from_database(connection: &Database, symbol: &str, resolution: &str, eastern_now_timestamp: i64, regular_market_start_timestamp: i64, candle_lookup_max_timestamp: i64) -> Vec<CandleSnapshot> {
+  // TODO: put this back? it doesn't work well for historical and scraped_at = (select scraped_at from candles where scraped_at >= {regular_market_start_timestamp} and scraped_at <= {eastern_now_timestamp} order by scraped_at desc limit 1) 
   let query = format!(
     "
     select scraped_at,
@@ -16,11 +24,10 @@ fn get_candle_snapshots_from_database(connection: &Database, symbol: &str, resol
       volume
     from candles 
     where timestamp >= {regular_market_start_timestamp} and timestamp <= {candle_lookup_max_timestamp}
-    and scraped_at = (select scraped_at from candles where scraped_at >= {regular_market_start_timestamp} and scraped_at <= {eastern_now_timestamp} order by scraped_at desc limit 1) 
     and symbol = '{symbol}'
     and resolution = '{resolution}'
     ORDER BY timestamp ASC
-  "
+    "
   );
   // TODO: filter out current partial candle and only look at 100% closed candles?
   // TODO: how to check if candle_scraper process crashed and data is stale/partial?
@@ -93,7 +100,7 @@ fn determine_trade_result(slippage_percentage: f64, profit_limit_percentage: f64
   };
 }
 
-fn backtest_date(connection: &Database, symbol: &str, resolution: &str, warmed_up_index: usize, indicator_settings: &SupertrendStrategyIndicatorSettings, slippage_percentage: f64, profit_limit_percentage: f64, stop_loss_percentage: f64, date: &str) -> Result<Vec<ReducedBacktestResult>, String> {
+fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &str, resolution: &str, warmed_up_index: usize, indicator_settings: &SupertrendStrategyIndicatorSettings, slippage_percentage: f64, profit_limit_percentage: f64, stop_loss_percentage: f64, date: &str) -> Result<Vec<ReducedBacktestResult>, String> {
   let (regular_market_start, regular_market_end) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
   // get mock now from end of day TODO: no need to walk through entire day second by second/minute by minute? use end of day direction changes as "collective" answer to what happened throughout the day
   let eastern_now = regular_market_end.with_timezone(&Eastern);
@@ -104,7 +111,7 @@ fn backtest_date(connection: &Database, symbol: &str, resolution: &str, warmed_u
   // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle?
   //let candle_lookup_max_timestamp = eastern_now_timestamp;
   let candle_lookup_max_timestamp = current_candle_start.timestamp() - 1;
-  let candle_snapshots = get_candle_snapshots_from_database(&connection, symbol, resolution, eastern_now_timestamp, regular_market_start_timestamp, candle_lookup_max_timestamp);
+  let candle_snapshots = candles_map.get(date).unwrap();
   if candle_snapshots.len() == 0 {
     return Err("candles.len() == 0".to_string());    
   }
@@ -156,28 +163,93 @@ fn main() {
   // run
   rt.block_on(async {
     // config
-    let symbol = "SPY";
-    let resolution = "1";
-    let indicator_settings = SupertrendStrategyIndicatorSettings {
-      supertrend_periods: 16,
-      supertrend_multiplier: 2.25,
-    };
-    let warmed_up_index = indicator_settings.supertrend_periods; // TODO: does this need to be indicator_settings.supertrend_periods 1:1 to make sure the moving average gets warmed up?
-    let slippage_percentage = 0.000125;
-    let profit_limit_percentage = 0.002;
-    let stop_loss_percentage = -0.001;
+    let args: Vec<String> = std::env::args().collect();
+    let provider_name = args.get(1).unwrap();
+    let _strategy_name = args.get(2).unwrap();
+    let symbol = args.get(3).unwrap();
+    let resolution = args.get(4).unwrap();
+    let start_date = format!("{} 00:00:00", args.get(5).unwrap());
+    let end_date = format!("{} 00:00:00", args.get(6).unwrap());   
+    let dates = common::dates::build_list_of_dates(&start_date, &end_date);
     // open database
-    let connection = database::Database::new("./database.db");
+    let database_filename = format!("./database-{}.db", provider_name);
+    let connection = database::Database::new(&database_filename);
+    // build cache
+    let mut candles_map = HashMap::new();
+    for date in &dates {
+      let (regular_market_start, regular_market_end) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
+      let eastern_now = regular_market_end.with_timezone(&Eastern);
+      let eastern_now_timestamp = eastern_now.timestamp();
+      let regular_market_start_timestamp = regular_market_start.timestamp();
+      let (current_candle_start, _current_candle_end) = common::market_session::get_current_candle_start_and_stop(resolution, &eastern_now);
+      // get candles from database
+      // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle?
+      //let candle_lookup_max_timestamp = eastern_now_timestamp;
+      let candle_lookup_max_timestamp = current_candle_start.timestamp() - 1;
+      let candle_snapshots = get_candle_snapshots_from_database(&connection, symbol, resolution, eastern_now_timestamp, regular_market_start_timestamp, candle_lookup_max_timestamp);
+      candles_map.insert(date.clone(), candle_snapshots);
+    }
+    // build combinations
+    let combinations = combinations::build_combinations("cartesian");
+    let num_combinations = combinations.len();
+    log::info!("{} combinations", num_combinations);
     // init database tables
     connection.migrate("./schema/");
     // backtest
-    let date = "2023-02-02 00:00:00";    
-    let results = backtest_date(&connection, symbol, resolution, warmed_up_index, &indicator_settings, slippage_percentage, profit_limit_percentage, stop_loss_percentage, date).unwrap();
-    let mut balance = 1000.00;
-    for result in &results {
-      balance *= 1.0 + result.profit_loss_percentage;
-    }
-    let profit_loss_percentage = math::calculate_percentage_increase(1000.00, balance);
-    log::info!("profit_loss_percentage = {profit_loss_percentage} num_trades = {num_trades}", num_trades = results.len());
+    let start = std::time::Instant::now();
+    let backtest_results: Vec<(f64, usize, usize, BacktestCombination)> = vec![];
+    let backtest_results = Arc::new(Mutex::new(backtest_results));
+    combinations.into_par_iter().for_each(|combination| {
+      let indicator_settings = SupertrendStrategyIndicatorSettings {
+        supertrend_periods: combination.supertrend_periods,
+        supertrend_multiplier: combination.supertrend_multiplier,
+      };
+      let warmed_up_index = combination.supertrend_periods; // TODO: does this need to be indicator_settings.supertrend_periods 1:1 to make sure the moving average gets warmed up?
+      let slippage_percentage = 0.000125; // about $0.05 on a $400 share
+      let profit_limit_percentage = combination.profit_limit_percentage;
+      let stop_loss_percentage = combination.stop_loss_percentage;
+      let starting_balance = 1000.00;
+      let mut balance = starting_balance;
+      let mut num_trades = 0;
+      let mut num_days = 0;
+      for date in &dates {
+        let results = backtest_date(&candles_map, symbol, resolution, warmed_up_index, &indicator_settings, slippage_percentage, profit_limit_percentage, stop_loss_percentage, date);
+        if results.is_err() {
+          //log::error!("{} {:?}", date, results.err());
+          continue;
+        }
+        num_days += 1;
+        let results = results.unwrap();
+        for result in &results {
+          balance *= 1.0 + result.profit_loss_percentage;
+        }
+        num_trades += results.len();
+      }
+      let profit_loss_percentage = math::calculate_percentage_increase(starting_balance, balance);
+      let profit_loss_percentage = math::round(profit_loss_percentage, 5);
+      let mut backtest_results = backtest_results.lock().unwrap();
+      backtest_results.push((profit_loss_percentage, num_trades, num_days, combination.clone()));
+      let num_tested = backtest_results.len();
+      drop(backtest_results);
+      // print
+      if num_tested % 1000 == 0 {
+        let elapsed = start.elapsed().as_millis();
+        let rate = (num_tested as f64 / elapsed as f64) * 1000.0;
+        let num_left = num_combinations - num_tested;
+        let time_left = num_left as f64 / rate as f64;
+        log::info!("{}/{} elapsed: {:.0}s rate: {:.0}/sec eta: {:.0}s", num_tested, num_combinations, elapsed as f64 / 1000.0, rate, time_left);
+      }
+    });
+    let mut backtest_results = backtest_results.lock().unwrap();
+    // sort
+    backtest_results.sort_by(|a, b| {
+      let a_profit_loss_percentage = a.0;
+      let b_profit_loss_percentage = b.0;
+      return b_profit_loss_percentage.partial_cmp(&a_profit_loss_percentage).unwrap();
+    });
+    // print best result
+    let best_result = &backtest_results[0];
+    log::info!("{}-{}: {:?}", start_date, end_date, best_result)
+    
   });
 }
