@@ -199,7 +199,6 @@ pub struct BacktestStatistic {
   pub num_short_direction_changes: usize,
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct BacktestCombination {
   pub supertrend_periods: usize,

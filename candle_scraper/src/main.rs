@@ -1,9 +1,6 @@
 use chrono::{Datelike, Utc, Weekday};
-use chrono_tz::{US::Eastern};
-use common::{
-  database,
-  utilities,
-};
+use chrono_tz::US::Eastern;
+use common::{database, utilities};
 
 fn main() {
   // logger
@@ -83,7 +80,12 @@ fn main() {
         );
       }
       // log
-      log::info!("scraped {} candles; most_recent_candle = {:?} oldest_candle = {:?}", candles.len(), most_recent_candle, oldest_candle);
+      log::info!(
+        "scraped {} candles; most_recent_candle = {:?} oldest_candle = {:?}",
+        candles.len(),
+        most_recent_candle,
+        oldest_candle
+      );
       // insert most recent candle into database
       // TODO: only update most recent candle or go back and update all?
       let result = database.batch_insert(&candles);

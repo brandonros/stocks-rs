@@ -97,16 +97,16 @@ pub fn build_direction_changes_from_signal_snapshots(signal_snapshots: &Vec<Sign
 }
 
 pub fn build_enriched_direction_changes(direction_changes: &Vec<DirectionChange>, signal_snapshots: &Vec<SignalSnapshot>) -> Vec<EnrichedDirectionChange> {
-  return direction_changes.into_iter().map(|direction_change| {
-    let start_snapshot = signal_snapshots[direction_change.start_snapshot_index].clone();
-    let end_snapshot = if direction_change.end_snapshot_index.is_none() {
-      None
-    } else {
-      Some(signal_snapshots[direction_change.end_snapshot_index.unwrap()].clone())
-    };
-    return EnrichedDirectionChange {
-        start_snapshot,
-        end_snapshot
-    }
-  }).collect();
+  return direction_changes
+    .into_iter()
+    .map(|direction_change| {
+      let start_snapshot = signal_snapshots[direction_change.start_snapshot_index].clone();
+      let end_snapshot = if direction_change.end_snapshot_index.is_none() {
+        None
+      } else {
+        Some(signal_snapshots[direction_change.end_snapshot_index.unwrap()].clone())
+      };
+      return EnrichedDirectionChange { start_snapshot, end_snapshot };
+    })
+    .collect();
 }

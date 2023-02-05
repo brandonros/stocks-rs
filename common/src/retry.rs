@@ -1,6 +1,6 @@
+use anyhow::Result;
 use log::warn;
 use std::future::Future;
-use anyhow::Result;
 
 pub async fn timeout_wrapper<Fut, T>(timeout_ms: u64, cb: &impl Fn() -> Fut) -> Result<T>
 where
@@ -39,13 +39,7 @@ where
   return Err(anyhow::anyhow!("request failed after {} retries", num_retries));
 }
 
-pub async fn retry_timeout_wrapper<Fut, T>(
-  known_errors: &[&str],
-  retry_delay_ms: u64,
-  num_retries: usize,
-  timeout_ms: u64,
-  cb: impl Fn() -> Fut,
-) -> Result<T>
+pub async fn retry_timeout_wrapper<Fut, T>(known_errors: &[&str], retry_delay_ms: u64, num_retries: usize, timeout_ms: u64, cb: impl Fn() -> Fut) -> Result<T>
 where
   Fut: Future<Output = Result<T>>,
 {

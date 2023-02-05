@@ -1,5 +1,5 @@
-use common::utilities;
 use common::structs::*;
+use common::utilities;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal_macros::dec;
 
@@ -21,7 +21,7 @@ pub fn build_combinations(mode: &str) -> Vec<BacktestCombination> {
     let profit_limit_percentages = utilities::build_decimal_range(dec!(0.001), dec!(0.01), dec!(0.0005));
     //let profit_limit_percentages = utilities::build_decimal_range(dec!(0.0005), dec!(0.0025), dec!(0.0005));
     let stop_loss_percentages = utilities::build_decimal_range(dec!(-0.01), dec!(-0.001), dec!(0.0005));
-    //let stop_loss_percentages = utilities::build_decimal_range(dec!(-0.00125), dec!(-0.0005), dec!(0.0005)); 
+    //let stop_loss_percentages = utilities::build_decimal_range(dec!(-0.00125), dec!(-0.0005), dec!(0.0005));
     //let stop_loss_percentages = vec![dec!(-1.00)];
     let mut combinations = vec![];
     for warmed_up_index in &warmed_up_indices {
@@ -34,7 +34,7 @@ pub fn build_combinations(mode: &str) -> Vec<BacktestCombination> {
                 supertrend_multiplier: supertrend_multiplier.to_f64().unwrap(),
                 profit_limit_percentage: profit_limit_percentage.to_f64().unwrap(),
                 stop_loss_percentage: stop_loss_percentage.to_f64().unwrap(),
-                warmed_up_index: *supertrend_periods // TODO: *warmed_up_index or *supertrend_periods or 0 or a constant
+                warmed_up_index: *supertrend_periods, // TODO: *warmed_up_index or *supertrend_periods or 0 or a constant
               });
             }
           }

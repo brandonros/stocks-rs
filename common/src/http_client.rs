@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use anyhow::Result;
+use std::str::FromStr;
 
 use crate::retry;
 use reqwest::{
@@ -38,13 +38,7 @@ pub async fn http_request_text(
   return Ok((response_headers, stringified_response_body));
 }
 
-pub async fn http_request_json<T>(
-  http_client: &Client,
-  method_str: &str,
-  url: &str,
-  headers: &Vec<(String, String)>,
-  payload: &Option<String>,
-) -> Result<T>
+pub async fn http_request_json<T>(http_client: &Client, method_str: &str, url: &str, headers: &Vec<(String, String)>, payload: &Option<String>) -> Result<T>
 where
   T: for<'de> serde::Deserialize<'de>,
 {

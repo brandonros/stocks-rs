@@ -6,7 +6,14 @@ use common::utilities;
 use common::{database, structs::QuoteSnapshot};
 use strategies::supertrend::{SupertrendStrategy, SupertrendStrategyIndicatorSettings};
 
-fn get_candle_snapshots_from_database(connection: &Database, symbol: &str, resolution: &str, eastern_now_timestamp: i64, regular_market_start_timestamp: i64, candle_lookup_max_timestamp: i64) -> Vec<CandleSnapshot> {
+fn get_candle_snapshots_from_database(
+  connection: &Database,
+  symbol: &str,
+  resolution: &str,
+  eastern_now_timestamp: i64,
+  regular_market_start_timestamp: i64,
+  candle_lookup_max_timestamp: i64,
+) -> Vec<CandleSnapshot> {
   let query = format!(
     "
     select scraped_at,
@@ -101,23 +108,33 @@ fn main() {
       // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle?
       //let candle_lookup_max_timestamp = eastern_now_timestamp;
       let candle_lookup_max_timestamp = current_candle_start.timestamp() - 1;
-      let candle_snapshots = get_candle_snapshots_from_database(&connection, symbol, resolution, eastern_now_timestamp, regular_market_start_timestamp, candle_lookup_max_timestamp);
+      let candle_snapshots = get_candle_snapshots_from_database(
+        &connection,
+        symbol,
+        resolution,
+        eastern_now_timestamp,
+        regular_market_start_timestamp,
+        candle_lookup_max_timestamp,
+      );
       if candle_snapshots.len() == 0 {
         log::warn!("candles.len() == 0");
         utilities::aligned_sleep(1000).await;
         continue;
       }
       // convert candle snapshots to candles
-      let candles = candle_snapshots.into_iter().map(|candle_snapshot| {
-        return Candle {
-          timestamp: candle_snapshot.timestamp,
-          open: candle_snapshot.open,
-          high: candle_snapshot.high,
-          low: candle_snapshot.low,
-          close: candle_snapshot.close,
-          volume: candle_snapshot.volume,
-        };
-      }).collect();
+      let candles = candle_snapshots
+        .into_iter()
+        .map(|candle_snapshot| {
+          return Candle {
+            timestamp: candle_snapshot.timestamp,
+            open: candle_snapshot.open,
+            high: candle_snapshot.high,
+            low: candle_snapshot.low,
+            close: candle_snapshot.close,
+            volume: candle_snapshot.volume,
+          };
+        })
+        .collect();
       // get recent signal signal from candles
       let strategy = SupertrendStrategy::new();
       let signal_snapshots = strategy.build_signal_snapshots_from_candles(&indicator_settings, &candles);
@@ -152,34 +169,41 @@ fn main() {
       let most_recent_signal_snapshot = &signal_snapshots[signal_snapshots.len() - 1];
       let most_recent_signal_snapshot_candle_age = eastern_now_timestamp - most_recent_signal_snapshot.candle.timestamp;
       if most_recent_signal_snapshot_candle_age > 120 {
-        log::warn!("signal_snapshot candle is old! most_recent_signal_snapshot_candle_age = {}", most_recent_signal_snapshot_candle_age);
+        log::warn!(
+          "signal_snapshot candle is old! most_recent_signal_snapshot_candle_age = {}",
+          most_recent_signal_snapshot_candle_age
+        );
       }
       // log
-      let current_candle_index = (eastern_now_timestamp - regular_market_start_timestamp) / 60;      
+      let current_candle_index = (eastern_now_timestamp - regular_market_start_timestamp) / 60;
       let most_recent_enriched_direction_change = &enriched_direction_changes[enriched_direction_changes.len() - 1];
       let previous_enriched_direction_changes = &enriched_direction_changes[0..enriched_direction_changes.len() - 1];
       // log
-      log::info!("{}", serde_json::to_string(&serde_json::json!({
-        "now": eastern_now_timestamp,
-        "current_candle": {
-          "index": current_candle_index,
-          "start": current_candle_start.timestamp(),
-          "end": current_candle_end.timestamp()
-        },
-        "quote": {
-          "age": quote_age,
-          "snapshot": most_recent_quote_snapshot
-        },
-        "settings": indicator_settings,
-        "signal": {
-          "candle_age": most_recent_signal_snapshot_candle_age,
-          "snapshot": most_recent_signal_snapshot
-        },
-        "direction_changes": {
-          "current": most_recent_enriched_direction_change,
-          "previous": previous_enriched_direction_changes
-        }
-      })).unwrap());
+      log::info!(
+        "{}",
+        serde_json::to_string(&serde_json::json!({
+          "now": eastern_now_timestamp,
+          "current_candle": {
+            "index": current_candle_index,
+            "start": current_candle_start.timestamp(),
+            "end": current_candle_end.timestamp()
+          },
+          "quote": {
+            "age": quote_age,
+            "snapshot": most_recent_quote_snapshot
+          },
+          "settings": indicator_settings,
+          "signal": {
+            "candle_age": most_recent_signal_snapshot_candle_age,
+            "snapshot": most_recent_signal_snapshot
+          },
+          "direction_changes": {
+            "current": most_recent_enriched_direction_change,
+            "previous": previous_enriched_direction_changes
+          }
+        }))
+        .unwrap()
+      );
       // TODO: insert into database?
       // TODO: paper trade based off this data?*/
       // sleep

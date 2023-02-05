@@ -1,6 +1,6 @@
+use anyhow::Result;
 use chrono::Utc;
 use futures::StreamExt;
-use anyhow::Result;
 
 use super::{structs::*, Robinhood};
 
