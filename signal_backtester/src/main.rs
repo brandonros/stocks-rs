@@ -182,7 +182,7 @@ fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &st
     return Err("signal_snapshots.len() == 0".to_string());    
   }
   // calculate results
-  let mode = "pyramiding";
+  let mode = "test";
   if mode == "single_entry" {
     // check snapshot age?
     let most_recent_signal_snapshot = &signal_snapshots[signal_snapshots.len() - 1];
@@ -205,7 +205,7 @@ fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &st
       results.push(trade_result);
     }
     return Ok(results);
-  } else {
+  } else if mode == "test" {
     let mut results: Vec<ReducedBacktestResult> = vec![];
     // walk over entire day through the perspective of signal snapshots (1 minute = 1 candle = 1 signal snapshot = 1 direction suggestion)
     let mut index = 0;
@@ -218,8 +218,41 @@ fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &st
       let trade_signal_snapshots = &signal_snapshots[index..signal_snapshots.len()];
       let current_signal_snapshot = &trade_signal_snapshots[0];
       let current_direction = &current_signal_snapshot.direction;
-      // check previous trade outcome
-      if results.len() > 0 {
+      // do not repeat a trade in the same direction
+      /*if results.len() > 0 {
+        let most_recent_trade_result = &results[results.len() - 1];
+        if *current_direction == most_recent_trade_result.trade_entry_snapshot.direction {
+          index += 1;
+          continue;
+        }
+      }*/
+      // see if taking trade is realistic (temporaily play with never taking short trades)
+      if *current_direction == Direction::Short {
+        index += 1;
+        continue;
+      }
+      // calculate trade result
+      let trade_result = determine_trade_result(slippage_percentage, profit_limit_percentage, stop_loss_percentage, trade_signal_snapshots);
+      let num_snapshots = (trade_result.trade_duration / 60) as usize; // TODO: assume 1 minute candles
+      index += num_snapshots + 1; // TODO: are we out at east 1 minute in between trades? otherwise it is super unrealistic that we close the previous trade and open the next all at candle.open?
+      results.push(trade_result);
+    }
+    return Ok(results);
+  } else if mode == "pyramiding" {
+    let mut results: Vec<ReducedBacktestResult> = vec![];
+    // walk over entire day through the perspective of signal snapshots (1 minute = 1 candle = 1 signal snapshot = 1 direction suggestion)
+    let mut index = 0;
+    while index < signal_snapshots.len() {
+      // skip if indicator not warmed up yet
+      if index < indicator_settings.warmed_up_index {
+        index += 1;
+        continue;
+      }
+      let trade_signal_snapshots = &signal_snapshots[index..signal_snapshots.len()];
+      let current_signal_snapshot = &trade_signal_snapshots[0];
+      let current_direction = &current_signal_snapshot.direction;
+      // do not repeat a trade that just lost us most in the same direction?
+      /*if results.len() > 0 {
         let most_recent_trade_result = &results[results.len() - 1];
         if *current_direction == most_recent_trade_result.trade_entry_snapshot.direction {
           if most_recent_trade_result.outcome == BacktestOutcome::StopLoss {
@@ -227,13 +260,15 @@ fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &st
             continue;
           }
         }
-      }
+      }*/
       let trade_result = determine_trade_result(slippage_percentage, profit_limit_percentage, stop_loss_percentage, trade_signal_snapshots);
       let num_snapshots = (trade_result.trade_duration / 60) as usize; // TODO: assume 1 minute candles
       index += num_snapshots + 1; // TODO: are we out at east 1 minute in between trades? otherwise it is super unrealistic that we close the previous trade and open the next all at candle.open?
       results.push(trade_result);
     }
     return Ok(results);
+  } else {
+    unimplemented!();
   }
 }
 
@@ -274,7 +309,7 @@ fn main() {
       candles_map.insert(date.clone(), candle_snapshots);
     }
     // build combinations
-    let combinations_mode = "cartesian";
+    let combinations_mode = "static";
     let combinations = combinations::build_combinations(combinations_mode);
     let num_combinations = combinations.len();
     log::info!("{} combinations", num_combinations);
@@ -301,40 +336,71 @@ fn main() {
       let mut num_losing_direction_changes = 0;
       let mut num_flat_direction_changes = 0;
       let mut num_losses = 0;
+      let mut num_long = 0;
+      let mut num_long_wins = 0;
+      let mut num_long_losses = 0;
+      let mut num_long_direction_changes = 0;
+      let mut num_short = 0;
+      let mut num_short_wins = 0;
+      let mut num_short_losses = 0;
+      let mut num_short_direction_changes = 0;
       let mut profit_loss_percentage_from_losses = 0.0;
       let mut profit_loss_percentage_from_wins = 0.0;      
       let mut profit_loss_percentage_from_direction_change_losses = 0.0;      
-      let mut profit_loss_percentage_from_direction_change_wins= 0.0;      
+      let mut profit_loss_percentage_from_direction_change_wins = 0.0;     
+      let mut profit_loss_percentage_from_long = 0.0;
+      let mut profit_loss_percentage_from_short = 0.0; 
       for date in &dates {
-        let results = backtest_date(&candles_map, symbol, resolution, &indicator_settings, slippage_percentage, profit_limit_percentage, stop_loss_percentage, date);
-        if results.is_err() {
+        let date_results = backtest_date(&candles_map, symbol, resolution, &indicator_settings, slippage_percentage, profit_limit_percentage, stop_loss_percentage, date);
+        if date_results.is_err() {
           //log::error!("{} {:?}", date, results.err());
           continue;
         }
-        let results = results.unwrap();
+        let date_results = date_results.unwrap();
         num_days += 1;
-        for result in &results {
-          balance *= 1.0 + result.profit_loss_percentage;
-          if result.outcome == BacktestOutcome::ProfitLimit {
+        for date_result in &date_results {
+          balance *= 1.0 + date_result.profit_loss_percentage;
+          if date_result.outcome == BacktestOutcome::ProfitLimit {
             num_wins += 1;
-            profit_loss_percentage_from_wins += result.profit_loss_percentage;
-          } else if result.outcome == BacktestOutcome::DirectionChange {
+            profit_loss_percentage_from_wins += date_result.profit_loss_percentage;
+          } else if date_result.outcome == BacktestOutcome::DirectionChange {
             num_direction_changes += 1;
-            if result.profit_loss_percentage < 0.0 {
+            if date_result.profit_loss_percentage < 0.0 {
               num_losing_direction_changes += 1;
-              profit_loss_percentage_from_direction_change_losses += result.profit_loss_percentage;
-            } else if result.profit_loss_percentage == 0.0 {
+              profit_loss_percentage_from_direction_change_losses += date_result.profit_loss_percentage;
+            } else if date_result.profit_loss_percentage == 0.0 {
               num_flat_direction_changes += 1;
             } else {
               num_winning_direction_changes += 1;
-              profit_loss_percentage_from_direction_change_wins += result.profit_loss_percentage;
+              profit_loss_percentage_from_direction_change_wins += date_result.profit_loss_percentage;
             }
           } else {
             num_losses += 1;
-            profit_loss_percentage_from_losses += result.profit_loss_percentage;
+            profit_loss_percentage_from_losses += date_result.profit_loss_percentage;
+          }
+          if date_result.trade_entry_snapshot.direction == Direction::Long {
+            num_long += 1;
+            profit_loss_percentage_from_long += date_result.profit_loss_percentage;
+            if date_result.outcome == BacktestOutcome::ProfitLimit {
+              num_long_wins += 1;
+            } else if date_result.outcome == BacktestOutcome::StopLoss {
+              num_long_losses += 1;
+            } else {
+              num_long_direction_changes += 1;
+            }
+          } else if date_result.trade_entry_snapshot.direction == Direction::Short {
+            num_short += 1;
+            profit_loss_percentage_from_short += date_result.profit_loss_percentage;
+            if date_result.outcome == BacktestOutcome::ProfitLimit {
+              num_short_wins += 1;
+            } else if date_result.outcome == BacktestOutcome::StopLoss {
+              num_short_losses += 1;
+            } else {
+              num_short_direction_changes += 1;
+            }
           }
         }
-        num_trades += results.len();
+        num_trades += date_results.len();
       }
       let profit_loss_percentage = math::calculate_percentage_increase(starting_balance, balance);
       let profit_loss_percentage = math::round(profit_loss_percentage, 5);
@@ -352,7 +418,17 @@ fn main() {
         num_direction_changes,
         num_winning_direction_changes,
         num_losing_direction_changes,
-        num_flat_direction_changes
+        num_flat_direction_changes,
+        profit_loss_percentage_from_long,
+        profit_loss_percentage_from_short,
+        num_long,
+        num_long_wins,
+        num_long_losses,
+        num_long_direction_changes,
+        num_short,
+        num_short_wins,
+        num_short_losses,
+        num_short_direction_changes,
       };
       backtest_results.push((statistics, combination.clone()));
       let num_tested = backtest_results.len();

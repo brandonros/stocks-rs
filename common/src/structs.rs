@@ -178,6 +178,8 @@ pub struct BacktestStatistic {
   pub profit_loss_percentage_from_wins: f64,
   pub profit_loss_percentage_from_direction_change_losses: f64,
   pub profit_loss_percentage_from_direction_change_wins: f64,
+  pub profit_loss_percentage_from_long: f64,
+  pub profit_loss_percentage_from_short: f64,
   pub num_trades: usize,
   pub num_days: usize,
   pub num_wins: usize,
@@ -185,7 +187,15 @@ pub struct BacktestStatistic {
   pub num_direction_changes: usize,
   pub num_winning_direction_changes: usize,
   pub num_losing_direction_changes: usize,
-  pub num_flat_direction_changes: usize
+  pub num_flat_direction_changes: usize,
+  pub num_long: usize,
+  pub num_long_wins: usize,
+  pub num_long_losses: usize,
+  pub num_long_direction_changes: usize,
+  pub num_short: usize,
+  pub num_short_wins: usize,
+  pub num_short_losses: usize,
+  pub num_short_direction_changes: usize,
 }
 
 
