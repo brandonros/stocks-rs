@@ -5,6 +5,7 @@ use common::structs::*;
 
 #[derive(Serialize, Clone, Debug)]
 pub struct SupertrendStrategyIndicatorSettings {
+  pub warmed_up_index: usize,
   pub supertrend_periods: usize,
   pub supertrend_multiplier: f64,
 }

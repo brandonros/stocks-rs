@@ -20,7 +20,6 @@ fn main() {
     // init database tables
     connection.migrate("./schema/");
     // get dates
-    
     let dates = common::dates::build_list_of_dates(&start_date, &end_date);
     // loop dates
     for date in &dates {

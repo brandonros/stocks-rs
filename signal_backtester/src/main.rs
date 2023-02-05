@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use chrono_tz::US::Eastern;
-use combinations::BacktestCombination;
 use common::database::Database;
 use common::{structs::*, math};
 use common::{database};
@@ -83,9 +82,25 @@ fn determine_trade_result(slippage_percentage: f64, profit_limit_percentage: f64
       };
     }
   }
+  // direction change
   let exit_price = math::calculate_close_price_with_slippage(start_signal_snapshot.direction, end_signal_snapshot.candle.close, slippage_percentage); // TODO: would probably get out on next candle open instead of last candle close? but we don't include this next candle on purpose? / add slippage to exit?
   let exit_profit_loss_percentage = math::calculate_profit_loss_percentage(start_signal_snapshot.direction, open_price, exit_price);
-  let profit_loss = math::calculate_profit_loss(start_signal_snapshot.direction, open_price, exit_price);
+  // peg losses to be at worst stop loss percentage/at best profit limit percentage
+  let exit_price = if exit_profit_loss_percentage < stop_loss_percentage {
+    stop_loss_price
+  } else if exit_profit_loss_percentage > profit_limit_percentage {
+    profit_limit_price
+  } else {
+    exit_price
+  };
+  let exit_profit_loss_percentage = if exit_profit_loss_percentage < stop_loss_percentage {
+    stop_loss_percentage
+  } else if exit_profit_loss_percentage > profit_limit_percentage {
+    profit_limit_percentage
+  } else {
+    exit_profit_loss_percentage
+  };
+  let exit_profit_loss = math::calculate_profit_loss(start_signal_snapshot.direction, open_price, exit_price);
   return ReducedBacktestResult {
     open_price: math::round(open_price, 2),
     exit_price: math::round(exit_price, 2),
@@ -95,12 +110,12 @@ fn determine_trade_result(slippage_percentage: f64, profit_limit_percentage: f64
     trade_entry_snapshot: start_signal_snapshot.clone(),
     trade_exit_snapshot: end_signal_snapshot.clone(),
     trade_duration: end_signal_snapshot.candle.timestamp - start_signal_snapshot.candle.timestamp,
-    profit_loss: math::round(profit_loss, 2),
+    profit_loss: math::round(exit_profit_loss, 2),
     profit_loss_percentage: math::round(exit_profit_loss_percentage, 5) // assume no better or worse than profit limit percentage exactly?
   };
 }
 
-fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &str, resolution: &str, warmed_up_index: usize, indicator_settings: &SupertrendStrategyIndicatorSettings, slippage_percentage: f64, profit_limit_percentage: f64, stop_loss_percentage: f64, date: &str) -> Result<Vec<ReducedBacktestResult>, String> {
+fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &str, resolution: &str, indicator_settings: &SupertrendStrategyIndicatorSettings, slippage_percentage: f64, profit_limit_percentage: f64, stop_loss_percentage: f64, date: &str) -> Result<Vec<ReducedBacktestResult>, String> {
   let (regular_market_start, regular_market_end) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
   // get mock now from end of day TODO: no need to walk through entire day second by second/minute by minute? use end of day direction changes as "collective" answer to what happened throughout the day
   let eastern_now = regular_market_end.with_timezone(&Eastern);
@@ -132,27 +147,64 @@ fn backtest_date(candles_map: &HashMap<String, Vec<CandleSnapshot>>, symbol: &st
   if signal_snapshots.is_empty() {
     return Err("signal_snapshots.len() == 0".to_string());    
   }
-  // check snapshot age?
-  let most_recent_signal_snapshot = &signal_snapshots[signal_snapshots.len() - 1];
-  let most_recent_signal_snapshot_candle_age = eastern_now_timestamp - most_recent_signal_snapshot.candle.timestamp;
-  if most_recent_signal_snapshot_candle_age > 120 {
-    log::warn!("signal_snapshot candle is old! most_recent_signal_snapshot_candle_age = {}", most_recent_signal_snapshot_candle_age);
+  // calculate results
+  let mode = "single_entry";
+  if mode == "single_entry" {
+    // check snapshot age?
+    let most_recent_signal_snapshot = &signal_snapshots[signal_snapshots.len() - 1];
+    let most_recent_signal_snapshot_candle_age = eastern_now_timestamp - most_recent_signal_snapshot.candle.timestamp;
+    if most_recent_signal_snapshot_candle_age > 120 {
+      log::warn!("signal_snapshot candle is old! most_recent_signal_snapshot_candle_age = {}", most_recent_signal_snapshot_candle_age);
+    }
+    // get direction changes
+    let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, indicator_settings.warmed_up_index);
+    if direction_changes.is_empty() {
+      return Err("direction_changes.len() == 0".to_string());    
+    }
+    // backtest direction changes as trades
+    let mut results = vec![];
+    for direction_change in &direction_changes {
+      let start_snapshot_index = direction_change.start_snapshot_index;
+      let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
+      let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..=end_snapshot_index];
+      let trade_result = determine_trade_result(slippage_percentage, profit_limit_percentage, stop_loss_percentage, trade_signal_snapshots);
+      results.push(trade_result);
+    }
+    return Ok(results);
+  } else {
+    let mut results: Vec<ReducedBacktestResult> = vec![];
+    // walk over entire day through the perspective of signal snapshots (1 minute = 1 candle = 1 signal snapshot = 1 direction suggestion)
+    let mut index = 0;
+    while index < signal_snapshots.len() {
+      // skip if indicator not warmed up yet
+      if index < indicator_settings.warmed_up_index {
+        index += 1;
+        continue;
+      }
+      let trade_signal_snapshots = &signal_snapshots[index..signal_snapshots.len()];
+      let current_signal_snapshot = &trade_signal_snapshots[0];
+      let current_direction = &current_signal_snapshot.direction;
+      // check previous trade outcome
+      if results.len() > 0 {
+        let most_recent_trade_result = &results[results.len() - 1];
+        if *current_direction == most_recent_trade_result.trade_entry_snapshot.direction {
+          if most_recent_trade_result.outcome == BacktestOutcome::StopLoss {
+            index += 1;
+            continue;
+          }
+        }
+      }
+      let trade_result = determine_trade_result(slippage_percentage, profit_limit_percentage, stop_loss_percentage, trade_signal_snapshots);
+      let num_snapshots = (trade_result.trade_duration / 60) as usize; // TODO: assume 1 minute candles
+      if num_snapshots == 0 {
+        index += 1; // need to move forward by at least 1 minute to prevent infinite loop?
+      } else {
+        index += num_snapshots; // TODO: are we out at east 1 minute in between trades? otherwise it is super unrealistic that we close the previous trade and open the next all at candle.open?
+      }
+      results.push(trade_result);
+    }
+    return Ok(results);
   }
-  // get direction changes
-  let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
-  if direction_changes.is_empty() {
-    return Err("direction_changes.len() == 0".to_string());    
-  }
-  // backtest direction changes as trades
-  let mut results = vec![];
-  for direction_change in &direction_changes {
-    let start_snapshot_index = direction_change.start_snapshot_index;
-    let end_snapshot_index = direction_change.end_snapshot_index.unwrap();
-    let trade_signal_snapshots = &signal_snapshots[start_snapshot_index..=end_snapshot_index];
-    let trade_result = determine_trade_result(slippage_percentage, profit_limit_percentage, stop_loss_percentage, trade_signal_snapshots);
-    results.push(trade_result);
-  }
-  return Ok(results);
 }
 
 fn main() {
@@ -197,14 +249,14 @@ fn main() {
     connection.migrate("./schema/");
     // backtest
     let start = std::time::Instant::now();
-    let backtest_results: Vec<(f64, usize, usize, BacktestCombination)> = vec![];
+    let backtest_results: Vec<(BacktestStatistic, BacktestCombination)> = vec![];
     let backtest_results = Arc::new(Mutex::new(backtest_results));
     combinations.into_par_iter().for_each(|combination| {
       let indicator_settings = SupertrendStrategyIndicatorSettings {
+        warmed_up_index: combination.warmed_up_index, // TODO: does this need to be indicator_settings.supertrend_periods 1:1 to make sure the moving average gets warmed up?
         supertrend_periods: combination.supertrend_periods,
         supertrend_multiplier: combination.supertrend_multiplier,
       };
-      let warmed_up_index = combination.supertrend_periods; // TODO: does this need to be indicator_settings.supertrend_periods 1:1 to make sure the moving average gets warmed up?
       let slippage_percentage = 0.000125; // about $0.05 on a $400 share
       let profit_limit_percentage = combination.profit_limit_percentage;
       let stop_loss_percentage = combination.stop_loss_percentage;
@@ -212,8 +264,18 @@ fn main() {
       let mut balance = starting_balance;
       let mut num_trades = 0;
       let mut num_days = 0;
+      let mut num_wins = 0;
+      let mut num_direction_changes = 0;
+      let mut num_winning_direction_changes = 0;
+      let mut num_losing_direction_changes = 0;
+      let mut num_flat_direction_changes = 0;
+      let mut num_losses = 0;
+      let mut profit_loss_percentage_from_losses = 0.0;
+      let mut profit_loss_percentage_from_wins = 0.0;      
+      let mut profit_loss_percentage_from_direction_change_losses = 0.0;      
+      let mut profit_loss_percentage_from_direction_change_wins= 0.0;      
       for date in &dates {
-        let results = backtest_date(&candles_map, symbol, resolution, warmed_up_index, &indicator_settings, slippage_percentage, profit_limit_percentage, stop_loss_percentage, date);
+        let results = backtest_date(&candles_map, symbol, resolution, &indicator_settings, slippage_percentage, profit_limit_percentage, stop_loss_percentage, date);
         if results.is_err() {
           //log::error!("{} {:?}", date, results.err());
           continue;
@@ -222,13 +284,46 @@ fn main() {
         let results = results.unwrap();
         for result in &results {
           balance *= 1.0 + result.profit_loss_percentage;
+          if result.outcome == BacktestOutcome::ProfitLimit {
+            num_wins += 1;
+            profit_loss_percentage_from_wins += result.profit_loss_percentage;
+          } else if result.outcome == BacktestOutcome::DirectionChange {
+            num_direction_changes += 1;
+            if result.profit_loss_percentage < 0.0 {
+              num_losing_direction_changes += 1;
+              profit_loss_percentage_from_direction_change_losses += result.profit_loss_percentage;
+            } else if result.profit_loss_percentage == 0.0 {
+              num_flat_direction_changes += 1;
+            } else {
+              num_winning_direction_changes += 1;
+              profit_loss_percentage_from_direction_change_wins += result.profit_loss_percentage;
+            }
+          } else {
+            num_losses += 1;
+            profit_loss_percentage_from_losses += result.profit_loss_percentage;
+          }
         }
         num_trades += results.len();
       }
       let profit_loss_percentage = math::calculate_percentage_increase(starting_balance, balance);
       let profit_loss_percentage = math::round(profit_loss_percentage, 5);
       let mut backtest_results = backtest_results.lock().unwrap();
-      backtest_results.push((profit_loss_percentage, num_trades, num_days, combination.clone()));
+      let statistics = BacktestStatistic {
+        profit_loss_percentage,
+        profit_loss_percentage_from_losses,
+        profit_loss_percentage_from_wins,
+        profit_loss_percentage_from_direction_change_losses,
+        profit_loss_percentage_from_direction_change_wins,
+        num_trades,
+        num_days,
+        num_wins,
+        num_losses,
+        num_direction_changes,
+        num_winning_direction_changes,
+        num_losing_direction_changes,
+        num_flat_direction_changes
+      };
+      backtest_results.push((statistics, combination.clone()));
       let num_tested = backtest_results.len();
       drop(backtest_results);
       // print
@@ -243,13 +338,13 @@ fn main() {
     let mut backtest_results = backtest_results.lock().unwrap();
     // sort
     backtest_results.sort_by(|a, b| {
-      let a_profit_loss_percentage = a.0;
-      let b_profit_loss_percentage = b.0;
+      let a_profit_loss_percentage = a.0.profit_loss_percentage;
+      let b_profit_loss_percentage = b.0.profit_loss_percentage;
       return b_profit_loss_percentage.partial_cmp(&a_profit_loss_percentage).unwrap();
     });
     // print best result
     let best_result = &backtest_results[0];
-    log::info!("{}-{}: {:?}", start_date, end_date, best_result)
+    log::info!("{}-{}: {}", start_date, end_date, serde_json::to_string_pretty(&best_result).unwrap());
     
   });
 }

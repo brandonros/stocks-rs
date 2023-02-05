@@ -170,3 +170,30 @@ pub struct ReducedBacktestResult {
   pub profit_loss: f64,
   pub profit_loss_percentage: f64,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BacktestStatistic {
+  pub profit_loss_percentage: f64,
+  pub profit_loss_percentage_from_losses: f64,
+  pub profit_loss_percentage_from_wins: f64,
+  pub profit_loss_percentage_from_direction_change_losses: f64,
+  pub profit_loss_percentage_from_direction_change_wins: f64,
+  pub num_trades: usize,
+  pub num_days: usize,
+  pub num_wins: usize,
+  pub num_losses: usize,
+  pub num_direction_changes: usize,
+  pub num_winning_direction_changes: usize,
+  pub num_losing_direction_changes: usize,
+  pub num_flat_direction_changes: usize
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub struct BacktestCombination {
+  pub supertrend_periods: usize,
+  pub supertrend_multiplier: f64,
+  pub profit_limit_percentage: f64,
+  pub stop_loss_percentage: f64,
+  pub warmed_up_index: usize,
+}

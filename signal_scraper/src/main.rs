@@ -53,8 +53,8 @@ fn main() {
     // config
     let symbol = "SPY";
     let resolution = "1";
-    let warmed_up_index = 10; // TODO: 10 or 0 or something different?
     let indicator_settings = SupertrendStrategyIndicatorSettings {
+      warmed_up_index: 10, // TODO: 10 or 0 or something different?
       supertrend_periods: 10,
       supertrend_multiplier: 3.00,
     };
@@ -127,7 +127,7 @@ fn main() {
         continue;
       }
       // get direction changes
-      let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, warmed_up_index);
+      let direction_changes = strategies::build_direction_changes_from_signal_snapshots(&signal_snapshots, indicator_settings.warmed_up_index);
       if direction_changes.is_empty() {
         log::warn!("direction_changes.len() == 0");
         utilities::aligned_sleep(1000).await;
@@ -170,10 +170,7 @@ fn main() {
           "age": quote_age,
           "snapshot": most_recent_quote_snapshot
         },
-        "settings": {
-          "indicator_settings": indicator_settings,
-          "warmed_up_index": warmed_up_index,
-        },
+        "settings": indicator_settings,
         "signal": {
           "candle_age": most_recent_signal_snapshot_candle_age,
           "snapshot": most_recent_signal_snapshot
