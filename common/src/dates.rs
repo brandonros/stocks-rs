@@ -46,3 +46,7 @@ pub fn datetime_from_timestamp(timestamp: i64) -> DateTime<Tz> {
 pub fn format_timestamp(timestamp: i64) -> String {
   return datetime_from_timestamp(timestamp).format("%Y-%m-%d %I:%M:%S %p").to_string();
 }
+
+pub fn format_datetime(datetime: DateTime<Tz>) -> String {
+  return datetime.format("%Y-%m-%d %I:%M:%S %p").to_string();
+}

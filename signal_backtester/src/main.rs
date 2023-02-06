@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use chrono::DateTime;
-use chrono::TimeZone;
 use chrono::Timelike;
 use chrono_tz::Tz;
 use common::database;
@@ -16,7 +15,6 @@ use common::utilities;
 use rayon::prelude::IntoParallelRefIterator;
 use rayon::prelude::ParallelIterator;
 use rust_decimal::prelude::ToPrimitive;
-use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use ta::Next;
@@ -28,13 +26,13 @@ enum EventDescription {
   FireShort,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Clone)]
 struct BacktestContext {
+  pub atr_periods: usize,
   pub supertrend_periods: usize,
   pub supertrend_multiplier: f64,
   pub profit_limit_percentage: f64,
   pub stop_loss_percentage: f64,
-  pub slippage_percentage: f64,
   pub entry_mode: EntryMode,
 }
 
@@ -68,7 +66,7 @@ struct DirectionWindow {
   pub end_event: Event,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 enum EntryMode {
   Single,
   Stacked,
@@ -87,6 +85,7 @@ struct TradeResult {
   pub start_timestamp: i64,
   pub exit_timestamp: i64,
   pub outcome: Outcome,
+  pub open_atr: f64,
   pub open_price: f64,
   pub exit_price: f64,
   pub profit_loss: f64,
@@ -147,12 +146,63 @@ fn get_direction(candles: &Vec<&Candle>, supertrend_periods: usize, supertrend_m
   return last_direction;
 }
 
+fn get_atr(candles: &Vec<&Candle>, atr_periods: usize) -> f64 {
+  // build indicators
+  let mut indicator = ta::indicators::AverageTrueRange::new(atr_periods).unwrap();
+  // loop candles
+  let mut last_atr = 0.0;
+  for candle in candles {
+    let open = candle.open;
+    let high = candle.high;
+    let low = candle.low;
+    let close = candle.close;
+    let volume = candle.volume as f64;
+    let data_item = ta::DataItem::builder()
+      .high(high)
+      .low(low)
+      .close(close)
+      .open(open)
+      .volume(volume)
+      .build()
+      .unwrap();
+    last_atr = indicator.next(&data_item);
+  }
+  return last_atr;
+}
+
+fn calculate_slippage_percentage(_backtest_context: &BacktestContext, current_atr: f64) -> f64 {
+  let is_low_atr = current_atr <= 0.25;
+  let is_high_atr = current_atr >= 0.45;
+  let is_medium_atr = is_low_atr == false && is_high_atr == false;
+  // TODO: does this scaling by ATR help or hurt and are the values realistic?
+  if is_low_atr  {
+    return 0.00015;
+  } else if is_medium_atr {
+    return 0.00020;
+  } else if is_high_atr {
+    return 0.00025; 
+  } else {
+    unreachable!()
+  }
+}
+
+fn calculate_profit_limit_percentage(backtest_context: &BacktestContext, current_atr: f64) -> f64 {
+  // TODO: scale based on ATR?
+  return backtest_context.profit_limit_percentage;
+}
+
+fn calculate_stop_loss_percentage(backtest_context: &BacktestContext, current_atr: f64) -> f64 {
+  // TODO: scale based on ATR?
+  return backtest_context.stop_loss_percentage;
+}
+
 fn calculate_trade_result(
   backtest_context: &BacktestContext,
   trade_candles: &Vec<Candle>,
   trade_direction: &Direction,
   start_timestamp: i64,
   open_price: f64,
+  open_atr: f64
 ) -> TradeResult {
   // do not include the last candle because it's only included for direction change purposes (getting out right at open)
   for i in 0..trade_candles.len() - 1 {
@@ -163,17 +213,23 @@ fn calculate_trade_result(
     } else {
       trade_candle.high
     };
-    let hypothetical_exit_price = math::calculate_close_price_with_slippage(trade_direction, hypothetical_exit_price, backtest_context.slippage_percentage);
+    // dynamic trade sizing based on atr
+    let slippage_percentage = calculate_slippage_percentage(backtest_context, open_atr);
+    let stop_loss_percentage = calculate_stop_loss_percentage(backtest_context, open_atr);
+    let profit_limit_percentage = calculate_profit_limit_percentage(backtest_context, open_atr);
+    // exit price
+    let hypothetical_exit_price = math::calculate_close_price_with_slippage(trade_direction, hypothetical_exit_price, slippage_percentage);
     let profit_loss_percentage = math::calculate_profit_loss_percentage(trade_direction, open_price, hypothetical_exit_price);
-    let stop_loss_hit = profit_loss_percentage <= backtest_context.stop_loss_percentage;
+    let stop_loss_hit = profit_loss_percentage <= stop_loss_percentage;
     if stop_loss_hit {
       // force exit price to be capped to stop_loss_price at worse
-      let stop_loss_price = math::calculate_stop_loss_price(trade_direction, open_price, backtest_context.stop_loss_percentage);
+      let stop_loss_price = math::calculate_stop_loss_price(trade_direction, open_price, stop_loss_percentage);
       let exit_price = stop_loss_price;
       let profit_loss = math::calculate_profit_loss(trade_direction, open_price, stop_loss_price);
-      let profit_loss_percentage = backtest_context.stop_loss_percentage;
+      let profit_loss_percentage = stop_loss_percentage;
       return TradeResult {
         open_price,
+        open_atr,
         direction: trade_direction.clone(),
         start_timestamp,
         exit_timestamp: trade_candle.timestamp,
@@ -189,16 +245,17 @@ fn calculate_trade_result(
     } else {
       trade_candle.low
     };
-    let hypothetical_exit_price = math::calculate_close_price_with_slippage(&trade_direction, hypothetical_exit_price, backtest_context.slippage_percentage);
+    let hypothetical_exit_price = math::calculate_close_price_with_slippage(&trade_direction, hypothetical_exit_price, slippage_percentage);
     let profit_loss_percentage = math::calculate_profit_loss_percentage(&trade_direction, open_price, hypothetical_exit_price);
-    if profit_loss_percentage >= backtest_context.profit_limit_percentage {
+    if profit_loss_percentage >= profit_limit_percentage {
       // force exit price to be capped to profit_limit_price at best
-      let profit_limit_price = math::calculate_profit_limit_price(&trade_direction, open_price, backtest_context.profit_limit_percentage);
+      let profit_limit_price = math::calculate_profit_limit_price(&trade_direction, open_price, profit_limit_percentage);
       let exit_price = profit_limit_price;
       let profit_loss = math::calculate_profit_loss(&trade_direction, open_price, profit_limit_price);
-      let profit_loss_percentage = backtest_context.profit_limit_percentage;
+      let profit_loss_percentage = profit_limit_percentage;
       return TradeResult {
         open_price,
+        open_atr,
         direction: trade_direction.clone(),
         start_timestamp,
         exit_timestamp: trade_candle.timestamp,
@@ -209,19 +266,25 @@ fn calculate_trade_result(
       };
     }
   }
+  // dynamic trade sizing based on atr
+  let slippage_percentage = calculate_slippage_percentage(backtest_context, open_atr);
+  let stop_loss_percentage = calculate_stop_loss_percentage(backtest_context, open_atr);
+  let profit_limit_percentage = calculate_profit_limit_percentage(backtest_context, open_atr);
+  // exit on last candle
   let trade_end_candle = &trade_candles[trade_candles.len() - 1];
   let exit_price = trade_end_candle.open;
-  let exit_price = math::calculate_close_price_with_slippage(&trade_direction, exit_price, backtest_context.slippage_percentage);
+  let exit_price = math::calculate_close_price_with_slippage(&trade_direction, exit_price, slippage_percentage);
   let profit_loss = math::calculate_profit_loss(&trade_direction, open_price, exit_price);
   let profit_loss_percentage = math::calculate_profit_loss_percentage(&trade_direction, open_price, exit_price);
-  if profit_loss_percentage < backtest_context.stop_loss_percentage {
-    log::warn!("{} < backtest_context.stop_loss_percentage", profit_loss_percentage);
+  if profit_loss_percentage < stop_loss_percentage {
+    log::warn!("{} < stop_loss_percentage", profit_loss_percentage);
   }
-  if profit_loss_percentage > backtest_context.profit_limit_percentage {
-    log::warn!("{} > backtest_context.profit_limit_percentage", profit_loss_percentage);
+  if profit_loss_percentage > profit_limit_percentage {
+    log::warn!("{} > profit_limit_percentage", profit_loss_percentage);
   }
   return TradeResult {
     open_price,
+    open_atr,
     direction: trade_direction.clone(),
     start_timestamp,
     exit_timestamp: trade_end_candle.timestamp,
@@ -232,7 +295,41 @@ fn calculate_trade_result(
   };
 }
 
-fn calculate_events(backtest_context: &BacktestContext, start: DateTime<Tz>, end: DateTime<Tz>, candles: &Vec<Candle>) -> Vec<Event> {
+fn calculate_directions(backtest_context: &BacktestContext, start: DateTime<Tz>, end: DateTime<Tz>, candles: &Vec<Candle>) -> HashMap<i64, Direction> {
+  let mut pointer = start;
+  let mut output = HashMap::new();
+  while pointer <= end {
+    let reduced_candles: Vec<&Candle> = candles.iter().filter(|candle| return candle.timestamp < pointer.timestamp()).collect();
+    // allow warmup
+    if reduced_candles.len() < backtest_context.supertrend_periods {
+      pointer += chrono::Duration::minutes(1);
+      continue;
+    }
+    let current_direction = get_direction(&reduced_candles, backtest_context.supertrend_periods, backtest_context.supertrend_multiplier);
+    output.insert(pointer.timestamp(), current_direction);
+    pointer += chrono::Duration::minutes(1);
+  }
+  return output;
+}
+
+fn calculate_atrs(backtest_context: &BacktestContext, start: DateTime<Tz>, end: DateTime<Tz>, candles: &Vec<Candle>) -> HashMap<i64, f64> {
+  let mut pointer = start;
+  let mut output = HashMap::new();
+  while pointer <= end {
+    let reduced_candles: Vec<&Candle> = candles.iter().filter(|candle| return candle.timestamp < pointer.timestamp()).collect();
+    // allow warmup
+    if reduced_candles.len() < backtest_context.supertrend_periods {
+      pointer += chrono::Duration::minutes(1);
+      continue;
+    }
+    let current_atr = get_atr(&reduced_candles, backtest_context.atr_periods);
+    output.insert(pointer.timestamp(), current_atr);
+    pointer += chrono::Duration::minutes(1);
+  }
+  return output;
+}
+
+fn calculate_events(backtest_context: &BacktestContext, start: DateTime<Tz>, end: DateTime<Tz>, candles: &Vec<Candle>, timestamps_candles_map: &HashMap<i64, &Candle>, timestamps_directions_map: &HashMap<i64, Direction>, timestamps_atrs_map: &HashMap<i64, f64>) -> Vec<Event> {
   let mut pointer = start;
   let mut last_direction = Direction::Flat;
   let mut last_trade_start = None;
@@ -246,20 +343,16 @@ fn calculate_events(backtest_context: &BacktestContext, start: DateTime<Tz>, end
       continue;
     }
     // find current candle
-    let current_candle = candles
-      .iter()
-      .find(|candle| {
-        return candle.timestamp == pointer.timestamp();
-      })
-      .unwrap();
-    // check direction
-    let current_direction = get_direction(&reduced_candles, backtest_context.supertrend_periods, backtest_context.supertrend_multiplier);
+    let current_candle = *timestamps_candles_map.get(&pointer.timestamp()).unwrap();
+    let current_direction = *timestamps_directions_map.get(&pointer.timestamp()).unwrap();
+    let current_atr = *timestamps_atrs_map.get(&pointer.timestamp()).unwrap();
     if current_direction != last_direction {
       // close any existing trades
       if last_trade_start.is_some() {
+        let slippage_percentage = calculate_slippage_percentage(backtest_context, current_atr);
         let hypothetical_close_price = current_candle.open;
         let hypothetical_close_price_with_slippage =
-          math::calculate_close_price_with_slippage(&last_direction, hypothetical_close_price, backtest_context.slippage_percentage);
+          math::calculate_close_price_with_slippage(&last_direction, hypothetical_close_price, slippage_percentage);
         events.push(Event {
           timestamp: pointer.timestamp(),
           //formatted_timestamp: pointer.format("%Y-%m-%d %I:%M:%S %p").to_string(),
@@ -270,9 +363,10 @@ fn calculate_events(backtest_context: &BacktestContext, start: DateTime<Tz>, end
       }
       // only take new trade if it isn't end of day
       if is_end_of_day == false {
+        let slippage_percentage = calculate_slippage_percentage(backtest_context, current_atr);
         let hypothetical_open_price = current_candle.open;
         let hypothetical_open_price_with_slippage =
-          math::calculate_open_price_with_slippage(&current_direction, hypothetical_open_price, backtest_context.slippage_percentage);
+          math::calculate_open_price_with_slippage(&current_direction, hypothetical_open_price, slippage_percentage);
         events.push(Event {
           timestamp: pointer.timestamp(),
           //formatted_timestamp: pointer.format("%Y-%m-%d %I:%M:%S %p").to_string(),
@@ -292,9 +386,10 @@ fn calculate_events(backtest_context: &BacktestContext, start: DateTime<Tz>, end
     if is_end_of_day {
       let last_event = &events[events.len() - 1];
       if last_event.r#type != EventType::Close {
+        let slippage_percentage = calculate_slippage_percentage(backtest_context, current_atr);
         let hypothetical_close_price = current_candle.open;
         let hypothetical_close_price_with_slippage =
-          math::calculate_close_price_with_slippage(&last_direction, hypothetical_close_price, backtest_context.slippage_percentage);
+          math::calculate_close_price_with_slippage(&last_direction, hypothetical_close_price, slippage_percentage);
         events.push(Event {
           timestamp: pointer.timestamp(),
           //formatted_timestamp: pointer.format("%Y-%m-%d %I:%M:%S %p").to_string(),
@@ -319,21 +414,35 @@ fn debug_trade_result(trade_result: &TradeResult) {
   } else {
     String::from("loss")
   };
+  let is_low_atr = trade_result.open_atr <= 0.25;
+  let is_high_atr = trade_result.open_atr >= 0.45;
+  let is_medium_atr = is_low_atr == false && is_high_atr == false;
+  let trade_atr_type = if is_low_atr {
+    String::from("low")
+  } else if is_medium_atr {
+    String::from("medium")
+  } else if is_high_atr {
+    String::from("high")
+  } else {
+    unreachable!()
+  };
   let mut row = vec![];
   row.push(format!("{}", dates::format_timestamp(trade_result.start_timestamp)));
   row.push(format!("{:?}", trade_result.direction));
   row.push(format!("${:.2}", trade_result.open_price));
+  row.push(format!("${:.2}", trade_result.open_atr));
   row.push(format!("{:?}", trade_result.outcome));
   row.push(format!("{}", dates::format_timestamp(trade_result.exit_timestamp)));
   row.push(format!("${:.2}", trade_result.exit_price));
   row.push(format!("${:.2}", trade_result.profit_loss));
   row.push(format!("{:.4}", trade_result.profit_loss_percentage));
   row.push(trade_result_type);
+  row.push(trade_atr_type);
   log::info!("{}", row.join(","));
 }
 
-fn backtest_date(backtest_context: &BacktestContext, start: DateTime<Tz>, end: DateTime<Tz>, candles: &Vec<Candle>) -> Vec<TradeResult> {
-  let events = calculate_events(backtest_context, start, end, &candles);
+fn backtest_date(backtest_context: &BacktestContext, start: DateTime<Tz>, end: DateTime<Tz>, candles: &Vec<Candle>, timestamps_candles_map: &HashMap<i64, &Candle>, timestamps_directions_map: &HashMap<i64, Direction>, timestamps_atrs_map: &HashMap<i64, f64>) -> Vec<TradeResult> {
+  let events = calculate_events(backtest_context, start, end, &candles, timestamps_candles_map, timestamps_directions_map, timestamps_atrs_map);
   let direction_windows: Vec<DirectionWindow> = events
     .chunks(2)
     .into_iter()
@@ -345,8 +454,15 @@ fn backtest_date(backtest_context: &BacktestContext, start: DateTime<Tz>, end: D
         end_event: chunk[1].clone(),
       };
     })
-    .filter(|direction_window| {
+    /*.filter(|direction_window| {
       return direction_window.start_event.description == EventDescription::FireLong; // warning: only ever taking long trades, no short
+    })*/
+    .filter(|direction_window| {
+      let open_atr = *timestamps_atrs_map.get(&direction_window.start_event.timestamp).unwrap();
+      let is_low_atr = open_atr <= 0.25;
+      let is_high_atr = open_atr >= 0.45;
+      let is_medium_atr = is_low_atr == false && is_high_atr == false;
+      return is_medium_atr || is_high_atr; // experiment with only taking medium/high ATR trades
     })
     .collect();
   let entry_mode = &backtest_context.entry_mode;
@@ -368,9 +484,11 @@ fn backtest_date(backtest_context: &BacktestContext, start: DateTime<Tz>, end: D
     while i < direction_window_candles.len() - 1 {
       // do not include last candle because it's a direction change
       let open_candle = &direction_window_candles[i];
-      let open_price = math::calculate_open_price_with_slippage(&direction_window_direction, open_candle.open, backtest_context.slippage_percentage);
+      let open_atr = *timestamps_atrs_map.get(&open_candle.timestamp).unwrap();
+      let slippage_percentage = calculate_slippage_percentage(backtest_context, open_atr);
+      let open_price = math::calculate_open_price_with_slippage(&direction_window_direction, open_candle.open, slippage_percentage);
       let trade_candles = &direction_window_candles[i..direction_window_candles.len()].to_vec();
-      let trade_result = calculate_trade_result(backtest_context, &trade_candles, &direction_window_direction, open_candle.timestamp, open_price);
+      let trade_result = calculate_trade_result(backtest_context, &trade_candles, &direction_window_direction, open_candle.timestamp, open_price, open_atr);
       let trade_duration = (trade_result.exit_timestamp - trade_result.start_timestamp) / 60;
       trade_results.push(trade_result);
       // logic to prevent stacked vs single entry per direction window
@@ -390,13 +508,19 @@ fn backtest_date(backtest_context: &BacktestContext, start: DateTime<Tz>, end: D
 
 fn backtest_dates(backtest_context: &BacktestContext, dates: &Vec<String>, candles_map: &HashMap<String, Vec<Candle>>) -> (f64, Vec<TradeResult>) {
   let trade_results: Vec<TradeResult> = dates.iter().fold(vec![], |mut prev, date| {
-    let candles = candles_map.get(date).unwrap();
+    let date_candles = candles_map.get(date).unwrap();
     // skip dates with no candles?
-    if candles.len() == 0 {
+    if date_candles.len() == 0 {
       return prev;
     }
+    let timestamps_candles_map = date_candles.iter().fold(HashMap::new(), |mut acc, candle| {
+      acc.insert(candle.timestamp, candle);
+      acc
+    });
     let (regular_market_start, regular_market_end) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
-    let date_results = backtest_date(backtest_context, regular_market_start, regular_market_end, candles);
+    let timestamps_directions_map = calculate_directions(backtest_context, regular_market_start, regular_market_end, date_candles);
+    let timestamps_atrs_map = calculate_atrs(backtest_context, regular_market_start, regular_market_end, date_candles);
+    let date_results = backtest_date(backtest_context, regular_market_start, regular_market_end, date_candles, &timestamps_candles_map, &timestamps_directions_map, &timestamps_atrs_map);
     prev.extend(date_results);
     return prev;
   });
@@ -426,7 +550,7 @@ fn build_combinations() -> Vec<BacktestContext> {
             supertrend_multiplier: supertrend_multiplier.to_f64().unwrap(),
             profit_limit_percentage: profit_limit_percentage.to_f64().unwrap(),
             stop_loss_percentage: stop_loss_percentage.to_f64().unwrap(),
-            slippage_percentage: 0.00025,
+            atr_periods: *supertrend_periods, // TODO: test different values
             entry_mode: EntryMode::Single,
           });
         }
@@ -439,8 +563,8 @@ fn build_combinations() -> Vec<BacktestContext> {
     supertrend_multiplier: 3.00,
     profit_limit_percentage: 0.002,
     stop_loss_percentage: -0.01,
-    slippage_percentage: 0.00025,
     entry_mode: EntryMode::Single,
+    atr_periods: 10, // TODO: test different values
   }];*/
 }
 
@@ -523,10 +647,15 @@ fn main() {
     return b_compounded_profit_loss_percentage.partial_cmp(&a_compounded_profit_loss_percentage).unwrap();
   });
   let best_combination = &combination_results[0];
-  log::info!("{:?}", best_combination);
+  log::info!("{}", serde_json::to_string(&serde_json::json!({
+    "start_date": dates_start,
+    "end_date": dates_end,
+    "return": math::round(best_combination.0, 4),
+    "configuration": best_combination.1
+  })).unwrap());
   let backtest_context = &best_combination.1;
   let (_compounded_profit_loss_percentage, trade_results) = backtest_dates(backtest_context, &dates, &candles_map);
-  log::info!("start_timestamp,direction,open_price,outcome,exit_timestamp,exit_price,profit_loss,profit_loss_percentage,outcome_type");
+  log::info!("start_timestamp,direction,open_price,open_atr,outcome,exit_timestamp,exit_price,profit_loss,profit_loss_percentage,outcome_type,atr_type");
   for trade_result in &trade_results {
     debug_trade_result(trade_result);
   }
