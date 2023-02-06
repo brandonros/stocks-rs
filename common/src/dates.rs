@@ -1,5 +1,5 @@
-use chrono::{Datelike, Days, NaiveDateTime, TimeZone, Weekday};
-use chrono_tz::US::Eastern;
+use chrono::{Datelike, Days, NaiveDateTime, TimeZone, Weekday, DateTime};
+use chrono_tz::{US::Eastern, Tz};
 
 pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
   let parsed_from = NaiveDateTime::parse_from_str(from, "%Y-%m-%d %H:%M:%S").unwrap();
@@ -36,4 +36,13 @@ pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
     pointer = pointer.checked_add_days(Days::new(1)).unwrap();
   }
   return results;
+}
+
+pub fn datetime_from_timestamp(timestamp: i64) -> DateTime<Tz> {
+  let naive = chrono::NaiveDateTime::from_timestamp_opt(timestamp, 0).unwrap();
+  return chrono_tz::US::Eastern.from_utc_datetime(&naive);
+}
+
+pub fn format_timestamp(timestamp: i64) -> String {
+  return datetime_from_timestamp(timestamp).format("%Y-%m-%d %I:%M:%S %p").to_string();
 }
