@@ -23,6 +23,6 @@ aggregate statistics into win/loss ratio, profit/loss performance, etc.
 START_DATE=$(date -v -400d +%F)
 END_DATE=$(date +%F)
 
-cargo run --bin historical_candle_scraper polygon 2022-01-01 2023-02-03
-cargo run --release --bin signal_backtester polygon supertrend SPY 1 2023-02-03 2023-02-03
+cargo run --bin historical_candle_scraper polygon 2023-02-06 2023-02-08
+cargo run --release --bin signal_backtester polygon supertrend SPY 1 2022-01-01 2023-02-03
 ```
