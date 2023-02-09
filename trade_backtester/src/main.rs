@@ -8,7 +8,7 @@ use common::dates;
 use common::market_session;
 use common::math;
 use common::structs::*;
-use serde::{Serialize};
+use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone)]
 struct BacktestContext {
