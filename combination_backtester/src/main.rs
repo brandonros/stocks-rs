@@ -8,7 +8,13 @@ use common::math;
 use common::structs::*;
 use common::trading;
 
-fn backtest_combination(dates: &Vec<String>, strategy_name: &String, candles_date_map: &HashMap<String, Vec<Arc<Candle>>>, trade_generation_context: &TradeGenerationContext, backtest_context: &BacktestContext) -> f64 {
+fn backtest_combination(
+  dates: &Vec<String>,
+  strategy_name: &String,
+  candles_date_map: &HashMap<String, Vec<Arc<Candle>>>,
+  trade_generation_context: &TradeGenerationContext,
+  backtest_context: &BacktestContext,
+) -> f64 {
   // build list of trades
   let dates_trades_map = trading::generate_dates_trades_map(&dates, &trade_generation_context, strategy_name, &candles_date_map);
   // backtest trades
@@ -56,11 +62,14 @@ fn main() {
     stop_loss_percentage: -0.002,
   };
   let combinations = vec![(trade_generation_context, backtest_context)];
-  let mut combination_results: Vec<f64> = combinations.iter().map(|combination| {
-    let trade_generation_context = &combination.0;
-    let backtest_context = &combination.1;
-    return backtest_combination(&dates, strategy_name, &candles_date_map, &trade_generation_context, &backtest_context);
-  }).collect();
+  let mut combination_results: Vec<f64> = combinations
+    .iter()
+    .map(|combination| {
+      let trade_generation_context = &combination.0;
+      let backtest_context = &combination.1;
+      return backtest_combination(&dates, strategy_name, &candles_date_map, &trade_generation_context, &backtest_context);
+    })
+    .collect();
   combination_results.sort_by(|a, b| {
     return b.partial_cmp(&a).unwrap();
   });

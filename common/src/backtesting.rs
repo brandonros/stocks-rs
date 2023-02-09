@@ -1,8 +1,8 @@
-use std::{sync::Arc, collections::HashMap};
+use std::{collections::HashMap, sync::Arc};
 
 use serde::Serialize;
 
-use crate::{structs::*, math};
+use crate::{math, structs::*};
 
 #[derive(Serialize, Debug)]
 pub enum Outcome {
@@ -126,7 +126,12 @@ fn calculate_trade_result(
   log::info!("{}", row.join(","));
 }*/
 
-pub fn generate_dates_trades_results_map(dates: &Vec<String>, backtest_context: &BacktestContext, candles_date_map: &HashMap<String, Vec<Arc<Candle>>>, dates_trades_map: &HashMap<String, Vec<Trade>>) -> HashMap<String, Vec<TradeBacktestResult>> {
+pub fn generate_dates_trades_results_map(
+  dates: &Vec<String>,
+  backtest_context: &BacktestContext,
+  candles_date_map: &HashMap<String, Vec<Arc<Candle>>>,
+  dates_trades_map: &HashMap<String, Vec<Trade>>,
+) -> HashMap<String, Vec<TradeBacktestResult>> {
   let mut dates_trades_results_map = HashMap::new();
   for date in dates {
     let date_candles = candles_date_map.get(date).unwrap();

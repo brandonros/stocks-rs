@@ -1,4 +1,4 @@
-use crate::{structs::*, database::*};
+use crate::{database::*, structs::*};
 
 pub fn get_candle_snapshots_from_database(
   connection: &Database,

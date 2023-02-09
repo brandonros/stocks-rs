@@ -1,4 +1,6 @@
 pub mod backtesting;
+pub mod cache;
+pub mod candles;
 pub mod database;
 pub mod dates;
 pub mod file;
@@ -11,5 +13,3 @@ pub mod retry;
 pub mod structs;
 pub mod trading;
 pub mod utilities;
-pub mod cache;
-pub mod candles;

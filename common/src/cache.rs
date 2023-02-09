@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{market_session, structs::*, database::*, candles};
+use crate::{candles, database::*, market_session, structs::*};
 
 pub fn build_candles_date_map(connection: &Database, symbol: &str, resolution: &str, dates: &Vec<String>) -> HashMap<String, Vec<Arc<Candle>>> {
   let mut candles_date_map = HashMap::new();
@@ -9,7 +9,8 @@ pub fn build_candles_date_map(connection: &Database, symbol: &str, resolution: &
     let regular_market_start_timestamp = regular_market_start.timestamp();
     let regular_market_end_timestamp = regular_market_end.timestamp();
     // get candles from database
-    let candle_snapshots = candles::get_candle_snapshots_from_database(&connection, symbol, resolution, regular_market_start_timestamp, regular_market_end_timestamp);
+    let candle_snapshots =
+      candles::get_candle_snapshots_from_database(&connection, symbol, resolution, regular_market_start_timestamp, regular_market_end_timestamp);
     let candles: Vec<Arc<Candle>> = candle_snapshots
       .iter()
       .map(|candle_snapshot| {
@@ -31,4 +32,3 @@ pub fn build_candles_date_map(connection: &Database, symbol: &str, resolution: &
   }
   return candles_date_map;
 }
-

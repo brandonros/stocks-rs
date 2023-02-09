@@ -1,8 +1,8 @@
-use std::{sync::Arc, collections::HashMap};
+use std::{collections::HashMap, sync::Arc};
 
 use ta::Next;
 
-use crate::{structs::*, market_session};
+use crate::{market_session, structs::*};
 
 fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<Arc<DirectionSnapshot>>) -> Vec<Trade> {
   let mut buckets: Vec<Vec<Arc<DirectionSnapshot>>> = Vec::new();
@@ -126,7 +126,12 @@ fn generate_direction_snapshots(
   return direction_snapshots;
 }
 
-pub fn generate_dates_trades_map(dates: &Vec<String>, trade_generation_context: &TradeGenerationContext, strategy_name: &str, candles_date_map: &HashMap<String, Vec<Arc<Candle>>>) -> HashMap<String, Vec<Trade>> {
+pub fn generate_dates_trades_map(
+  dates: &Vec<String>,
+  trade_generation_context: &TradeGenerationContext,
+  strategy_name: &str,
+  candles_date_map: &HashMap<String, Vec<Arc<Candle>>>,
+) -> HashMap<String, Vec<Trade>> {
   let mut dates_trades_map = HashMap::new();
   for date in dates {
     let date_candles = candles_date_map.get(date).unwrap();
