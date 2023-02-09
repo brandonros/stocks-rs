@@ -1647,30 +1647,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
 
 [[package]]
-name = "signal_backtester"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "chrono-tz",
- "common",
- "cookie",
- "log",
- "providers",
- "rayon",
- "reqwest",
- "rusqlite",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "simple_logger",
- "strategies",
- "ta",
- "tokio",
- "url",
-]
-
-[[package]]
 name = "signal_scraper"
 version = "0.1.0"
 dependencies = [
@@ -1970,6 +1946,54 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24eb03ba0eab1fd845050058ce5e616558e8f8d8fca633e6b163fe25c797213a"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "trade_backtester"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "common",
+ "cookie",
+ "log",
+ "providers",
+ "rayon",
+ "reqwest",
+ "rusqlite",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "simple_logger",
+ "strategies",
+ "ta",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "trade_generator"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "common",
+ "cookie",
+ "log",
+ "providers",
+ "rayon",
+ "reqwest",
+ "rusqlite",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "simple_logger",
+ "strategies",
+ "ta",
+ "tokio",
+ "url",
 ]
 
 [[package]]

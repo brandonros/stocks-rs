@@ -199,11 +199,30 @@ pub struct BacktestStatistic {
   pub num_short_direction_changes: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-pub struct BacktestCombination {
-  pub supertrend_periods: usize,
-  pub supertrend_multiplier: f64,
-  pub profit_limit_percentage: f64,
-  pub stop_loss_percentage: f64,
-  pub warmed_up_index: usize,
+#[derive(Serialize)]
+pub struct DirectionSnapshot {
+  pub timestamp: i64,
+  pub direction: Direction,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Trade {
+  pub start_timestamp: i64,
+  pub end_timestamp: i64,
+  pub direction: Direction,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct TradeGenerationContext {
+  pub vwap_std_dev_multiplier: f64,
+  pub divergence_threshold: f64,
+  pub sma_periods: usize,
+  pub warmup_periods: usize,
+}
+
+#[derive(Clone)]
+pub struct VwapContext {
+  pub vwap: f64,
+  pub upper_band: f64,
+  pub lower_band: f64,
 }

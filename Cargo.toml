@@ -5,7 +5,8 @@ members = [
   "providers",
   "strategies",
   # binaries
-  "signal_backtester",
+  "trade_generator",
+  "trade_backtester",
   "candle_scraper",
   #"options_scraper", # TODO: implement
   "quote_scraper",
