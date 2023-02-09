@@ -1,12 +1,7 @@
-use std::collections::HashMap;
 use std::io::Write;
-use std::sync::Arc;
 
 use common::cache;
-use common::candles;
 use common::database;
-use common::database::Database;
-use common::market_session;
 use common::structs::*;
 use common::trading;
 

@@ -1,6 +1,5 @@
 use chrono::{Datelike, Utc, Weekday};
 use chrono_tz::US::Eastern;
-use common::cache;
 use common::candles;
 use common::database::Database;
 use common::structs::*;

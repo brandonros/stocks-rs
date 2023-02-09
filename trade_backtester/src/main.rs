@@ -1,17 +1,11 @@
 use std::collections::HashMap;
 use std::io::Write;
-use std::sync::Arc;
 
 use common::backtesting;
 use common::cache;
-use common::candles;
 use common::database;
-use common::database::Database;
-use common::dates;
-use common::market_session;
 use common::math;
 use common::structs::*;
-use serde::Serialize;
 
 fn main() {
   simple_logger::init_with_level(log::Level::Info).unwrap();
