@@ -20,7 +20,7 @@ fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<Arc<Direc
     buckets.push(bucket);
   }
   return buckets
-    .into_iter()
+    .iter()
     .map(|bucket| {
       return Trade {
         start_timestamp: bucket[0].timestamp,

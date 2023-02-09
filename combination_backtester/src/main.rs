@@ -70,6 +70,9 @@ fn backtest_combination(
     }
   }
   let compounded_profit_loss_percentage = math::calculate_percentage_increase(starting_balance, balance);
+  if compounded_profit_loss_percentage > 0.0 {
+    log::info!("trade_generation_context = {:?} backtest_context = {:?} {:.2}", trade_generation_context, backtest_context, compounded_profit_loss_percentage);
+  }
   return compounded_profit_loss_percentage;
 }
 
@@ -105,12 +108,11 @@ fn main() {
     combination_results.push(compounded_profit_loss_percentage);
     let num_tested = combination_results.len();
     if num_tested % 10 == 0 {
-      let elapsed_ms = start.elapsed().as_millis();
       let elapsed_sec = start.elapsed().as_secs();
       let rate_sec = num_tested as f64 / elapsed_sec as f64;
       let num_left = num_combinations - num_tested;
       let eta_sec = num_left as f64 / rate_sec as f64;
-      log::info!("{}/{} elapsed {}s eta {}s {}/sec", num_tested, num_combinations, elapsed_sec, eta_sec, rate_sec)
+      log::info!("{}/{} elapsed {}s eta {:.0}s {:.2}/sec", num_tested, num_combinations, elapsed_sec, eta_sec, rate_sec)
     }
   });
   let mut combination_results = combination_results.lock().unwrap();
