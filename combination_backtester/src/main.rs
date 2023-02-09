@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use common::backtesting;
 use common::cache;
@@ -7,6 +8,46 @@ use common::database;
 use common::math;
 use common::structs::*;
 use common::trading;
+use common::utilities;
+use rayon::prelude::IntoParallelRefIterator;
+use rayon::prelude::ParallelIterator;
+use rust_decimal::prelude::ToPrimitive;
+use rust_decimal_macros::dec;
+
+fn generate_combinations() -> Vec<(TradeGenerationContext, BacktestContext)> {
+  let mut combinations = vec![];
+  let min = dec!(-0.01);
+  let max = dec!(0.01);
+  let step = dec!(0.00005);
+  let divergence_thresholds = utilities::build_decimal_range(min, max, step);
+  let min = dec!(0.001);
+  let max = dec!(0.005);
+  let step = dec!(0.0005);
+  let profit_limit_percentages = utilities::build_decimal_range(min, max, step);
+  let min = dec!(-0.005);
+  let max = dec!(-0.001);
+  let step = dec!(0.0005);
+  let stop_loss_percentages = utilities::build_decimal_range(min, max, step);
+  for divergence_threshold in &divergence_thresholds {
+    for profit_limit_percentage in &profit_limit_percentages {
+      for stop_loss_percentage in &stop_loss_percentages {
+        let trade_generation_context = TradeGenerationContext {
+          vwap_std_dev_multiplier: 1.5,
+          warmup_periods: 10,
+          sma_periods: 10,
+          divergence_threshold: divergence_threshold.to_f64().unwrap()
+        };
+        let backtest_context = BacktestContext {
+          slippage_percentage: 0.000125,
+          profit_limit_percentage: profit_limit_percentage.to_f64().unwrap(),
+          stop_loss_percentage: stop_loss_percentage.to_f64().unwrap(),
+        };
+        combinations.push((trade_generation_context, backtest_context));
+      }
+    }
+  }
+  return combinations;
+}
 
 fn backtest_combination(
   dates: &Vec<String>,
@@ -50,26 +91,29 @@ fn main() {
   // build candles cache map
   let candles_date_map = cache::build_candles_date_map(&connection, symbol, resolution, &dates);
   // build list of combinations
-  let trade_generation_context = TradeGenerationContext {
-    vwap_std_dev_multiplier: 1.5,
-    warmup_periods: 10,
-    sma_periods: 10,
-    divergence_threshold: 0.00025,
-  };
-  let backtest_context = BacktestContext {
-    slippage_percentage: 0.000125,
-    profit_limit_percentage: 0.004,
-    stop_loss_percentage: -0.002,
-  };
-  let combinations = vec![(trade_generation_context, backtest_context)];
-  let mut combination_results: Vec<f64> = combinations
-    .iter()
-    .map(|combination| {
-      let trade_generation_context = &combination.0;
-      let backtest_context = &combination.1;
-      return backtest_combination(&dates, strategy_name, &candles_date_map, &trade_generation_context, &backtest_context);
-    })
-    .collect();
+  let combinations = generate_combinations();
+  let num_combinations = combinations.len();
+  log::info!("num_combinations = {}", num_combinations);
+  let start = std::time::Instant::now();
+  let combination_results: Vec<f64> = vec![];
+  let combination_results = Arc::new(Mutex::new(combination_results));
+  combinations.par_iter().for_each(|combination| {
+    let trade_generation_context = &combination.0;
+    let backtest_context = &combination.1;
+    let compounded_profit_loss_percentage = backtest_combination(&dates, strategy_name, &candles_date_map, &trade_generation_context, &backtest_context);
+    let mut combination_results = combination_results.lock().unwrap();
+    combination_results.push(compounded_profit_loss_percentage);
+    let num_tested = combination_results.len();
+    if num_tested % 10 == 0 {
+      let elapsed_ms = start.elapsed().as_millis();
+      let elapsed_sec = start.elapsed().as_secs();
+      let rate_sec = num_tested as f64 / elapsed_sec as f64;
+      let num_left = num_combinations - num_tested;
+      let eta_sec = num_left as f64 / rate_sec as f64;
+      log::info!("{}/{} elapsed {}s eta {}s {}/sec", num_tested, num_combinations, elapsed_sec, eta_sec, rate_sec)
+    }
+  });
+  let mut combination_results = combination_results.lock().unwrap();
   combination_results.sort_by(|a, b| {
     return b.partial_cmp(&a).unwrap();
   });

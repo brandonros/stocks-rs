@@ -205,7 +205,7 @@ pub struct DirectionSnapshot {
   pub direction: Direction,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Trade {
   pub start_timestamp: i64,
   pub end_timestamp: i64,

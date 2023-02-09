@@ -137,12 +137,12 @@ pub fn generate_dates_trades_map(
     let date_candles = candles_date_map.get(date).unwrap();
     let direction_snapshots = generate_direction_snapshots(&trade_generation_context, date, date_candles, &strategy_name);
     if direction_snapshots.is_empty() {
-      log::warn!("date = {} direction_snapshots.is_empty()", date);
+      //log::warn!("date = {} direction_snapshots.is_empty()", date);
       dates_trades_map.insert(date.clone(), vec![]);
       continue;
     }
     let date_trades = calculate_trades_from_direction_snapshots(&direction_snapshots);
-    log::info!("date = {} num_trades = {}", date, date_trades.len());
+    //log::info!("date = {} num_trades = {}", date, date_trades.len());
     dates_trades_map.insert(date.clone(), date_trades);
   }
   return dates_trades_map;
