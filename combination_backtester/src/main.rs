@@ -52,7 +52,7 @@ fn generate_combinations() -> Vec<(TradeGenerationContext, BacktestContext)> {
 fn backtest_combination(
   dates: &Vec<String>,
   strategy_name: &String,
-  candles_date_map: &HashMap<String, Vec<Arc<Candle>>>,
+  candles_date_map: &HashMap<String, Vec<Candle>>,
   trade_generation_context: &TradeGenerationContext,
   backtest_context: &BacktestContext,
 ) -> f64 {

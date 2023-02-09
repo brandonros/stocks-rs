@@ -199,7 +199,7 @@ pub struct BacktestStatistic {
   pub num_short_direction_changes: usize,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct DirectionSnapshot {
   pub timestamp: i64,
   pub direction: Direction,

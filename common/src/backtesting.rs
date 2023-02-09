@@ -25,7 +25,7 @@ pub struct TradeBacktestResult {
 
 fn calculate_trade_result(
   backtest_context: &BacktestContext,
-  trade_candles: &Vec<Arc<Candle>>,
+  trade_candles: &Vec<Candle>,
   trade_direction: &Direction,
   start_timestamp: i64,
   open_price: f64,
@@ -129,7 +129,7 @@ fn calculate_trade_result(
 pub fn generate_dates_trades_results_map(
   dates: &Vec<String>,
   backtest_context: &BacktestContext,
-  candles_date_map: &HashMap<String, Vec<Arc<Candle>>>,
+  candles_date_map: &HashMap<String, Vec<Candle>>,
   dates_trades_map: &HashMap<String, Vec<Trade>>,
 ) -> HashMap<String, Vec<TradeBacktestResult>> {
   let mut dates_trades_results_map = HashMap::new();
@@ -139,7 +139,7 @@ pub fn generate_dates_trades_results_map(
     let date_trade_results: Vec<TradeBacktestResult> = date_trades
       .iter()
       .map(|trade| {
-        let trade_candles: Vec<Arc<Candle>> = date_candles
+        let trade_candles: Vec<Candle> = date_candles
           .iter()
           .filter(|candle| {
             return candle.timestamp >= trade.start_timestamp && candle.timestamp <= trade.end_timestamp;

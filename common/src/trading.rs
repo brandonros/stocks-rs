@@ -4,9 +4,9 @@ use ta::Next;
 
 use crate::{market_session, structs::*};
 
-fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<Arc<DirectionSnapshot>>) -> Vec<Trade> {
-  let mut buckets: Vec<Vec<Arc<DirectionSnapshot>>> = Vec::new();
-  let mut bucket: Vec<Arc<DirectionSnapshot>> = Vec::new();
+fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<DirectionSnapshot>) -> Vec<Trade> {
+  let mut buckets: Vec<Vec<DirectionSnapshot>> = Vec::new();
+  let mut bucket: Vec<DirectionSnapshot> = Vec::new();
   let mut current_direction = &direction_snapshots[0].direction;
   for direction_snapshot in direction_snapshots {
     if direction_snapshot.direction != *current_direction {
@@ -31,7 +31,7 @@ fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<Arc<Direc
     .collect();
 }
 
-fn get_vwap(candles: &Vec<Arc<Candle>>, std_dev_multiplier: f64) -> VwapContext {
+fn get_vwap(candles: &Vec<Candle>, std_dev_multiplier: f64) -> VwapContext {
   // build indicators
   let mut indicator = ta::indicators::VolumeWeightedAveragePrice::new();
   // loop candles
@@ -63,7 +63,7 @@ fn get_vwap(candles: &Vec<Arc<Candle>>, std_dev_multiplier: f64) -> VwapContext 
   };
 }
 
-fn get_hlc3_sma(candles: &Vec<Arc<Candle>>, periods: usize) -> f64 {
+fn get_hlc3_sma(candles: &Vec<Candle>, periods: usize) -> f64 {
   // build indicators
   let mut indicator = ta::indicators::SimpleMovingAverage::new(periods).unwrap();
   // loop candles
@@ -81,19 +81,19 @@ fn get_hlc3_sma(candles: &Vec<Arc<Candle>>, periods: usize) -> f64 {
 fn generate_direction_snapshots(
   trade_generation_context: &TradeGenerationContext,
   date: &str,
-  date_candles: &Vec<Arc<Candle>>,
+  date_candles: &Vec<Candle>,
   strategy_name: &str,
-) -> Vec<Arc<DirectionSnapshot>> {
+) -> Vec<DirectionSnapshot> {
   assert!(strategy_name == "vwap_hlc3_divergence"); // TODO: more strategies?
   let (regular_market_start, regular_market_end) = market_session::get_regular_market_session_start_and_end_from_string(date);
   let mut pointer = regular_market_start;
-  let mut direction_snapshots: Vec<Arc<DirectionSnapshot>> = vec![];
+  let mut direction_snapshots: Vec<DirectionSnapshot> = vec![];
   // iterate over every minute of the trading day, making sure we do not include the end of the most recent candle because it would not be known in a live situation
   while pointer <= regular_market_end {
-    let reduced_candles: Vec<Arc<Candle>> = date_candles
+    let reduced_candles: Vec<Candle> = date_candles
       .iter()
-      .filter(|candle| return candle.timestamp < pointer.timestamp())
       .cloned()
+      .filter(|candle| return candle.timestamp < pointer.timestamp())
       .collect();
     // allow warmup
     if reduced_candles.len() < trade_generation_context.warmup_periods {
@@ -117,10 +117,10 @@ fn generate_direction_snapshots(
     } else {
       Direction::Short
     };
-    direction_snapshots.push(Arc::new(DirectionSnapshot {
+    direction_snapshots.push(DirectionSnapshot {
       timestamp: pointer.timestamp(),
       direction,
-    }));
+    });
     pointer += chrono::Duration::minutes(1);
   }
   return direction_snapshots;
@@ -130,7 +130,7 @@ pub fn generate_dates_trades_map(
   dates: &Vec<String>,
   trade_generation_context: &TradeGenerationContext,
   strategy_name: &str,
-  candles_date_map: &HashMap<String, Vec<Arc<Candle>>>,
+  candles_date_map: &HashMap<String, Vec<Candle>>,
 ) -> HashMap<String, Vec<Trade>> {
   let mut dates_trades_map = HashMap::new();
   for date in dates {
