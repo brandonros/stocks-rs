@@ -26,4 +26,5 @@ END_DATE=$(date +%F)
 cargo run --bin historical_candle_scraper polygon 2023-02-06 2023-02-08
 cargo run --release --bin trade_generator polygon vwap_hlc3_divergence SPY 1 2022-01-01 2023-02-03
 cargo run --release --bin trade_backtester polygon vwap_hlc3_divergence SPY 1 2022-01-01 2023-02-03
+cargo run --release --bin combination_backtester polygon vwap_hlc3_divergence SPY 1 2022-01-01 2023-02-03
 ```

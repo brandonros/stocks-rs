@@ -25,3 +25,5 @@ rust_decimal = "1.28.0"
 rust_decimal_macros = "1.28.0"
 # error handling
 anyhow = "1.0.68"
+# technical analysis
+ta = { git = "https://github.com/brandonros/ta-rs", rev = "fd5a4e876e6f8da485895a5dac29f9e093fbc259" }

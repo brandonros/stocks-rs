@@ -293,6 +293,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "combination_backtester"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "common",
+ "cookie",
+ "log",
+ "providers",
+ "rayon",
+ "reqwest",
+ "rusqlite",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "simple_logger",
+ "strategies",
+ "ta",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "common"
 version = "0.1.0"
 dependencies = [
@@ -307,6 +331,7 @@ dependencies = [
  "rust_decimal_macros",
  "serde",
  "serde_json",
+ "ta",
  "tokio",
 ]
 

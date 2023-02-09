@@ -8,6 +8,7 @@ members = [
   "trade_generator",
   "trade_backtester",
   "candle_scraper",
+  "combination_backtester",
   #"options_scraper", # TODO: implement
   "quote_scraper",
   "signal_scraper",

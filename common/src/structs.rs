@@ -226,3 +226,10 @@ pub struct VwapContext {
   pub upper_band: f64,
   pub lower_band: f64,
 }
+
+#[derive(Debug, Serialize, Clone)]
+pub struct BacktestContext {
+  pub slippage_percentage: f64,
+  pub stop_loss_percentage: f64,
+  pub profit_limit_percentage: f64,
+}
