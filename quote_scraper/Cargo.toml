@@ -12,10 +12,6 @@ tokio = { workspace = true }
 # json
 serde = { workspace = true }
 serde_json = { workspace = true }
-# http requests/urls/cookies
-reqwest = { workspace = true }
-url = { workspace = true }
-cookie = { workspace = true }
 # time
 chrono = { workspace = true }
 chrono-tz = { workspace = true }

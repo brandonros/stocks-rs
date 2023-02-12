@@ -223,13 +223,11 @@ dependencies = [
  "common",
  "log",
  "providers",
- "reqwest",
  "rusqlite",
  "serde",
  "serde_json",
  "simple_logger",
  "tokio",
- "url",
  "yahoo_finance_api",
 ]
 
@@ -310,11 +308,8 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "common",
- "cookie",
  "log",
- "providers",
  "rayon",
- "reqwest",
  "rusqlite",
  "rust_decimal",
  "rust_decimal_macros",
@@ -323,7 +318,6 @@ dependencies = [
  "simple_logger",
  "ta 0.5.0 (git+https://github.com/brandonros/ta-rs?rev=366c310b3a518fd990f1972dc1ebed606b9b57a6)",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -335,11 +329,9 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "log",
- "rayon",
  "reqwest",
  "rusqlite",
  "rust_decimal",
- "rust_decimal_macros",
  "serde",
  "serde_json",
  "ta 0.5.0 (git+https://github.com/brandonros/ta-rs?rev=366c310b3a518fd990f1972dc1ebed606b9b57a6)",
@@ -705,13 +697,11 @@ dependencies = [
  "dotenv",
  "log",
  "providers",
- "reqwest",
  "rusqlite",
  "serde",
  "serde_json",
  "simple_logger",
  "tokio",
- "url",
  "yahoo_finance_api",
 ]
 
@@ -1304,17 +1294,14 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "common",
- "cookie",
  "log",
  "providers",
- "reqwest",
  "rusqlite",
  "serde",
  "serde_json",
  "simple_logger",
  "ta 0.5.0 (git+https://github.com/brandonros/ta-rs?rev=366c310b3a518fd990f1972dc1ebed606b9b57a6)",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -1689,10 +1676,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "common",
- "cookie",
  "log",
- "providers",
- "reqwest",
  "rusqlite",
  "serde",
  "serde_json",
@@ -1700,7 +1684,6 @@ dependencies = [
  "strategies",
  "ta 0.5.0 (git+https://github.com/brandonros/ta-rs?rev=366c310b3a518fd990f1972dc1ebed606b9b57a6)",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -1996,20 +1979,13 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "common",
- "cookie",
  "log",
- "providers",
- "rayon",
- "reqwest",
  "rusqlite",
- "rust_decimal",
- "rust_decimal_macros",
  "serde",
  "serde_json",
  "simple_logger",
  "ta 0.5.0 (git+https://github.com/brandonros/ta-rs?rev=366c310b3a518fd990f1972dc1ebed606b9b57a6)",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -2019,20 +1995,13 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "common",
- "cookie",
  "log",
- "providers",
- "rayon",
- "reqwest",
  "rusqlite",
- "rust_decimal",
- "rust_decimal_macros",
  "serde",
  "serde_json",
  "simple_logger",
  "ta 0.5.0 (git+https://github.com/brandonros/ta-rs?rev=366c310b3a518fd990f1972dc1ebed606b9b57a6)",
  "tokio",
- "url",
 ]
 
 [[package]]
