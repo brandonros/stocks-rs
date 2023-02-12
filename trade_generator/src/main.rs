@@ -23,12 +23,7 @@ fn main() {
   // build candles cache map
   let candles_date_map = cache::build_candles_date_map(&connection, symbol, resolution, &dates);
   // build list of trades
-  let trade_generation_context = TradeGenerationContext {
-    overbought_z_distance: 2.0,
-    oversold_z_distance: 2.0,
-    warmup_periods: 10,
-    sma_periods: 10,
-  };
+  let trade_generation_context = TradeGenerationContext::default();
   let dates_trades_map = trading::generate_dates_trades_map(&dates, &trade_generation_context, strategy_name, &candles_date_map);
   // flush trades to file?
   let stringified_value = serde_json::to_string_pretty(&dates_trades_map).unwrap();

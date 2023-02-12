@@ -157,9 +157,9 @@ fn candle_to_data_item(candle: &Candle) -> DataItem {
 }
 
 fn calculate_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
-  let atr_periods = 5;
-  let atr_multiplier = 1.0;
-  let cci_periods = 20;
+  let atr_periods = trade_generation_context.atr_periods;
+  let atr_multiplier = trade_generation_context.atr_multiplier;
+  let cci_periods = trade_generation_context.cci_periods;
   let mut indicator = ta::indicators::TrendMagic::new(atr_periods, atr_multiplier, cci_periods);
   let mut last_result = (false, false, false);
   for candle in candles {

@@ -15,3 +15,13 @@ pub fn build_decimal_range(min: Decimal, max: Decimal, step: Decimal) -> Vec<Dec
   }
   return results;
 }
+
+pub fn build_usize_range(min: usize, max: usize, step: usize) -> Vec<usize> {
+  let mut pointer = min;
+  let mut results = vec![];
+  while pointer <= max {
+    results.push(pointer);
+    pointer += step;
+  }
+  return results;
+}
