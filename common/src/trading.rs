@@ -1,6 +1,6 @@
 use std::{collections::{HashMap}};
 
-use ta::{Next, DataItem};
+use ta::{Next};
 
 use crate::{market_session, structs::*};
 
@@ -70,106 +70,36 @@ fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<Direction
     .collect();
 }
 
-fn pine_stoch(candles: &Vec<Candle>, periods: usize) -> f64 {
-  let mut min_indicator = ta::indicators::Minimum::new(periods).unwrap();
-  let mut max_indicator = ta::indicators::Maximum::new(periods).unwrap();
-  let mut last_min = 0.0;
-  let mut last_max = 0.0;
-  for candle in candles {
-    last_min = min_indicator.next(candle.low);
-    last_max = max_indicator.next(candle.high);
-  }
-  let most_recent_close = &candles[candles.len() - 1].close;
-  return 100.0 * (most_recent_close - last_min) / (last_max - last_min);
-}
-
 /*
-CCI Stochastic and a quick lesson on Scalping & Trading Systems by Daveatt 
-
-source = input(close)
-cci_period = input(28, "CCI Period")
-stoch_period = input(28, "Stoch Period")
-stoch_smooth_k = input(3, "Stoch Smooth K")
-stoch_smooth_d = input(3, "Stoch Smooth D")
-d_or_k = input(defval="D", options=["D", "K"])
-OB = input(80, "Overbought", type=input.integer)
-OS = input(20, "Oversold", type=input.integer)
-
-stoch = 100 * (close - min(low, length)) / (max(high, length) - min(low, length)).
-cci = cci(source, cci_period)
-stoch_cci_k = sma(stoch(cci, cci, cci, stoch_period), stoch_smooth_k)
-stoch_cci_d = sma(stoch_cci_k, stoch_smooth_d)
-
-ma = (d_or_k == "D") ? stoch_cci_d : stoch_cci_k
-
-trend_enter = if showArrowsEnter
-    if crossunder(ma, OS)
-        1
-    else
-        if crossover(ma, OB)
-            -1
-trend_exit = if showArrowsExit
-    if crossunder(ma, OB)
-        -1
-    else
-        if crossover(ma, OS)
-            1
-
-trend_center = if showArrowsCenter
-    if crossunder(ma, 50)
-        -1
-    else
-        if crossover(ma, 50)
-            1
+Z distance from VWAP [LazyBear]
+calc_zvwap(pds) =>
+	mean = sum(volume*close,pds)/sum(volume,pds)
+	vwapsd = sqrt(sma(pow(close-mean, 2), pds) )
+	(close-mean)/vwapsd
 */
-
-/*
-Trend Magic by KivancOzbilgic
-
-periods = 20
-atr_multiplier = 1.0
-atr_periods = 5
-atr = sma(tr, atr_periods)
-upT=low-atr*atr_multiplier
-downT=high+atr*atr_multiplier
-MagicTrend=0.0
-if cci(src,period)>=0
-  if upT<nz(MagicTrend[1]
-    nz(MagicTrend[1])
-  else
-    upT
-else
-  if downT>nz(MagicTrend[1]
-    nz(MagicTrend[1])
-  else
-    downT
-  
-*/
-fn candle_to_data_item(candle: &Candle) -> DataItem {
-  return DataItem::builder()
-    .open(candle.open)
-    .high(candle.high)
-    .low(candle.low)
-    .close(candle.close)
-    .volume(candle.volume as f64)
-    .build()
-    .unwrap();
-}
-
 fn calculate_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
-  let atr_periods = trade_generation_context.atr_periods;
-  let atr_multiplier = trade_generation_context.atr_multiplier;
-  let cci_periods = trade_generation_context.cci_periods;
-  let mut indicator = ta::indicators::TrendMagic::new(atr_periods, atr_multiplier, cci_periods);
-  let mut last_result = (false, false, false);
+  // mean = sum(volume*close,pds)/sum(volume,pds)
+  let periods = trade_generation_context.sma_periods;
+  let most_recent_candles = candles.as_slice()[candles.len()-periods..].to_vec();
+  let mean_dividend: f64 = most_recent_candles.iter().map(|candle| candle.volume as f64 * candle.close).sum();
+  let mean_divisor: f64 = most_recent_candles.iter().map(|candle| candle.volume as f64).sum();
+  let mean = mean_dividend / mean_divisor;
+  // vwapsd = sqrt(sma(pow(close-mean, 2), pds) )
+  let mut indicator = ta::indicators::SimpleMovingAverage::new(periods).unwrap();
+  let mut last_sma = 0.0;
   for candle in candles {
-    last_result = indicator.next(&candle_to_data_item(candle));
+    last_sma = indicator.next((candle.close - mean).powf(2.0));
   }
-  let (_cross1, buy_signal, sell_signal) = last_result;
-  if buy_signal {
+  let vwapsd = last_sma.sqrt();
+  // (close-mean)/vwapsd
+  let most_recent_close = candles[candles.len() - 1].close;
+  let z_distance = (most_recent_close - mean) / vwapsd;
+  // oversold
+  if z_distance <= (trade_generation_context.oversold_z_distance * -1.0) {
     return Direction::Long;
   }
-  if sell_signal {
+  // overbought
+  if z_distance >= trade_generation_context.overbought_z_distance {
     return Direction::Short;
   }
   return Direction::Flat;

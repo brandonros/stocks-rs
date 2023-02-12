@@ -45,26 +45,20 @@ fn generate_trade_generation_context_combinations() -> Vec<TradeGenerationContex
   let min = dec!(1.00);
   let max = dec!(3.00);
   let step = dec!(0.1);
-  let atr_multipliers = utilities::build_decimal_range(min, max, step);
-  let min = 5;
-  let max = 10;
-  let step = 1;
-  let atr_periods = utilities::build_usize_range(min, max, step);
-  let min = 5;
-  let max = 10;
-  let step = 1;
-  let cci_periods = utilities::build_usize_range(min, max, step);
-  for atr_multiplier in &atr_multipliers {
-    for atr_periods in &atr_periods {
-      for cci_periods in &cci_periods {
-        let trade_generation_context = TradeGenerationContext {
-          warmup_periods: 10,
-          atr_multiplier: atr_multiplier.to_f64().unwrap(),
-          atr_periods: *atr_periods,
-          cci_periods: *cci_periods
-        };
-        combinations.push(trade_generation_context);
-      }
+  let oversold_z_distances = utilities::build_decimal_range(min, max, step);
+  let min = dec!(1.00);
+  let max = dec!(3.00);
+  let step = dec!(0.1);
+  let overbought_z_distances = utilities::build_decimal_range(min, max, step);
+  for oversold_z_distance in &oversold_z_distances {
+    for overbought_z_distance in &overbought_z_distances {
+      let trade_generation_context = TradeGenerationContext {
+        overbought_z_distance: overbought_z_distance.to_f64().unwrap(),
+        oversold_z_distance: oversold_z_distance.to_f64().unwrap(),
+        warmup_periods: 10,
+        sma_periods: 10
+      };
+      combinations.push(trade_generation_context);
     }
   }
   return combinations;
