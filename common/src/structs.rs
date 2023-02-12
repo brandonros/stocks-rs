@@ -177,8 +177,8 @@ pub struct TradeGenerationContext {
 impl Default for TradeGenerationContext {
   fn default() -> Self {
     Self {
-      atr_periods: 10,
-      atr_multiplier: 1.0,
+      atr_periods: 6,
+      atr_multiplier: 1.5,
       cci_periods: 10,
       warmup_periods: 10
     }
@@ -203,5 +203,6 @@ pub struct BacktestContext {
 pub struct CombinationBacktestResult {
   pub trade_generation_context: TradeGenerationContext,
   pub backtest_context: BacktestContext,
+  pub num_trades: usize,
   pub compounded_profit_loss_percentage: f64
 }

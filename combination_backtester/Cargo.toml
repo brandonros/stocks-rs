@@ -24,6 +24,6 @@ common = { path = "../common" }
 # decimal
 rust_decimal = { workspace = true }
 rust_decimal_macros = { workspace = true }
+ordered-float = { workspace = true }
 # paralell iteration
 rayon = { workspace = true }
-

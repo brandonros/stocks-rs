@@ -30,8 +30,8 @@ fn main() {
   // backtest trades
   let backtest_context = BacktestContext {
     slippage_percentage: 0.000125,
-    profit_limit_percentage: 0.004,
-    stop_loss_percentage: -0.002,
+    profit_limit_percentage: 0.005,
+    stop_loss_percentage: -0.005,
   };
   let dates_trades_results_map = backtesting::generate_dates_trades_results_map(&dates, &backtest_context, &candles_date_map, &dates_trades_map);
   // write to file
@@ -39,14 +39,27 @@ fn main() {
   let mut file = std::fs::File::create(format!("/tmp/{}-trade-results.json", strategy_name)).unwrap();
   file.write_all(stringified_value.as_bytes()).unwrap();
   // print result
+  let mut num_trades = 0;
+  let mut num_winners = 0;
+  let mut num_losers = 0;
   let starting_balance = 1000.00;
   let mut balance = starting_balance;
   for date in &dates {
     let date_trade_results = dates_trades_results_map.get(date).unwrap();
     for date_trade_result in date_trade_results {
       balance *= 1.0 + date_trade_result.profit_loss_percentage;
+      num_trades += 1;
+      if date_trade_result.profit_loss_percentage > 0.0 {
+        num_winners += 1;
+      } else {
+        num_losers += 1;
+      }
     }
   }
   let compounded_profit_loss_percentage = math::calculate_percentage_increase(starting_balance, balance);
+  log::info!("num_dates = {}", dates.len());
   log::info!("compounded_profit_loss_percentage = {:.2}", compounded_profit_loss_percentage);
+  log::info!("num_trades = {}", num_trades);
+  log::info!("num_winners = {}", num_winners);
+  log::info!("num_losers = {}", num_losers);
 }
