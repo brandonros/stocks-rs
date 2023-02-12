@@ -141,5 +141,5 @@ fn main() {
     return b.compounded_profit_loss_percentage.partial_cmp(&a.compounded_profit_loss_percentage).unwrap();
   });
   let best_combination_result = &combination_results[0];
-  log::info!("best_combination_result = {:?}", best_combination_result);
+  log::info!("best_combination_result = {}", serde_json::to_string(&best_combination_result).unwrap());
 }

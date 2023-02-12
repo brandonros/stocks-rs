@@ -188,7 +188,7 @@ pub struct BacktestContext {
   pub profit_limit_percentage: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct CombinationBacktestResult {
   pub trade_generation_context: TradeGenerationContext,
   pub backtest_context: BacktestContext,
