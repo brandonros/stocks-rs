@@ -1,10 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::{HashMap}};
 
 use serde::Serialize;
 
 use crate::{math, structs::*};
 
-#[derive(Serialize, Debug)]
+#[derive(PartialEq, Serialize, Debug)]
 pub enum Outcome {
   StopLoss,
   ProfitLimit,
@@ -136,22 +136,51 @@ pub fn generate_dates_trades_results_map(
   for date in dates {
     let date_candles = candles_date_map.get(date).unwrap();
     let date_trades = dates_trades_map.get(date).unwrap();
-    let date_trade_results: Vec<TradeBacktestResult> = date_trades
-      .iter()
-      .map(|trade| {
+    let mut date_trade_results: Vec<TradeBacktestResult> = vec![];
+    for trade in date_trades {
+      if trade.direction == Direction::Flat {
+        continue;
+      }
+      let trade_candles: Vec<Candle> = date_candles
+        .iter()
+        .filter(|candle| {
+          return candle.timestamp >= trade.start_timestamp && candle.timestamp <= trade.end_timestamp;
+        })
+        .cloned()
+        .collect();
+      let open_candle = &trade_candles[0];
+      let slippage_percentage = backtest_context.slippage_percentage;
+      let open_price = math::calculate_open_price_with_slippage(&trade.direction, open_candle.open, slippage_percentage);
+      let trade_result = calculate_trade_result(&backtest_context, &trade_candles, &trade.direction, open_candle.timestamp, open_price);
+      if trade_result.outcome == Outcome::DirectionChange {
+        date_trade_results.push(trade_result);
+        continue;
+      }
+      let trade_exit_timestamp = trade_result.exit_timestamp;
+      let time_left = trade.end_timestamp - trade_exit_timestamp;
+      if time_left == 0 {
+        date_trade_results.push(trade_result);
+        continue;
+      }
+      date_trade_results.push(trade_result);
+      // backtest additional pyramid/stacked trades
+      let mut pointer = trade_exit_timestamp + 60;
+      while pointer <= trade.end_timestamp {
         let trade_candles: Vec<Candle> = date_candles
           .iter()
           .filter(|candle| {
-            return candle.timestamp >= trade.start_timestamp && candle.timestamp <= trade.end_timestamp;
+            return candle.timestamp >= pointer && candle.timestamp <= trade.end_timestamp;
           })
           .cloned()
           .collect();
         let open_candle = &trade_candles[0];
         let slippage_percentage = backtest_context.slippage_percentage;
         let open_price = math::calculate_open_price_with_slippage(&trade.direction, open_candle.open, slippage_percentage);
-        return calculate_trade_result(&backtest_context, &trade_candles, &trade.direction, open_candle.timestamp, open_price);
-      })
-      .collect();
+        let trade_result = calculate_trade_result(&backtest_context, &trade_candles, &trade.direction, open_candle.timestamp, open_price);
+        pointer = trade_result.exit_timestamp + 60;
+        date_trade_results.push(trade_result);
+      }
+    }
     dates_trades_results_map.insert(date.clone(), date_trade_results);
   }
   return dates_trades_results_map;

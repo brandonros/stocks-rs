@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::{HashMap}};
 
 use ta::Next;
 
@@ -100,19 +100,25 @@ fn generate_direction_snapshots(
       pointer += chrono::Duration::minutes(1);
       continue;
     }
-    // calculate vwap
+    // calculate vwap context
     let vwap_context = get_vwap(&reduced_candles, trade_generation_context.vwap_std_dev_multiplier);
+    let vwap = vwap_context.vwap;
+    let vwap_upper_band = vwap_context.upper_band;
+    let vwap_lower_band = vwap_context.lower_band;
+    // calculate hlc3
+    let most_recent_candle = &reduced_candles[reduced_candles.len() - 1];
+    let hlc3 = (most_recent_candle.high + most_recent_candle.low + most_recent_candle.close) / 3.0;
     // calculate hlc3 sma
     let hlc3_sma = get_hlc3_sma(&reduced_candles, trade_generation_context.sma_periods);
     // get divergence percentage
-    let divergence_percentage = (hlc3_sma - vwap_context.vwap) / vwap_context.vwap;
+    let divergence_percentage = (hlc3 - vwap) / vwap;
     /*log::info!(
       "vwap = {:.2} hlc3_sma = {:2} divergence_percentage = {:4}",
       vwap_context.vwap,
       hlc3_sma,
       divergence_percentage
     );*/
-    let direction = if divergence_percentage > trade_generation_context.divergence_threshold {
+    let direction = if hlc3 > vwap && divergence_percentage > trade_generation_context.divergence_threshold {
       Direction::Long
     } else {
       Direction::Short

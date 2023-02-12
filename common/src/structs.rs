@@ -139,24 +139,6 @@ pub enum BacktestOutcome {
   DirectionChange,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BacktestResult {
-  pub open_price: f64,
-  pub exit_price: f64,
-  pub profit_limit_price: f64,
-  pub stop_loss_price: f64,
-  pub outcome: BacktestOutcome,
-  pub trade_entry_snapshot: SignalSnapshot,
-  pub trade_peak_snapshot: SignalSnapshot,
-  pub trade_trough_snapshot: SignalSnapshot,
-  pub trade_exit_snapshot: SignalSnapshot,
-  pub trade_peak_profit_loss_percentage: f64,
-  pub trade_trough_profit_loss_percentage: f64,
-  pub trade_duration: i64,
-  pub profit_loss: f64,
-  pub profit_loss_percentage: f64,
-}
-
 #[derive(Serialize, Clone, Debug)]
 pub struct ReducedBacktestResult {
   pub open_price: f64,
@@ -169,34 +151,6 @@ pub struct ReducedBacktestResult {
   pub trade_duration: i64,
   pub profit_loss: f64,
   pub profit_loss_percentage: f64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct BacktestStatistic {
-  pub compounded_profit_loss_percentage: f64,
-  pub profit_loss_percentage: f64,
-  pub profit_loss_percentage_from_losses: f64,
-  pub profit_loss_percentage_from_wins: f64,
-  pub profit_loss_percentage_from_direction_change_losses: f64,
-  pub profit_loss_percentage_from_direction_change_wins: f64,
-  pub profit_loss_percentage_from_long: f64,
-  pub profit_loss_percentage_from_short: f64,
-  pub num_trades: usize,
-  pub num_days: usize,
-  pub num_wins: usize,
-  pub num_losses: usize,
-  pub num_direction_changes: usize,
-  pub num_winning_direction_changes: usize,
-  pub num_losing_direction_changes: usize,
-  pub num_flat_direction_changes: usize,
-  pub num_long: usize,
-  pub num_long_wins: usize,
-  pub num_long_losses: usize,
-  pub num_long_direction_changes: usize,
-  pub num_short: usize,
-  pub num_short_wins: usize,
-  pub num_short_losses: usize,
-  pub num_short_direction_changes: usize,
 }
 
 #[derive(Serialize, Clone)]
@@ -232,4 +186,11 @@ pub struct BacktestContext {
   pub slippage_percentage: f64,
   pub stop_loss_percentage: f64,
   pub profit_limit_percentage: f64,
+}
+
+#[derive(Debug)]
+pub struct CombinationBacktestResult {
+  pub trade_generation_context: TradeGenerationContext,
+  pub backtest_context: BacktestContext,
+  pub compounded_profit_loss_percentage: f64
 }
