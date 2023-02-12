@@ -5,27 +5,21 @@ edition = "2021"
 
 [dependencies]
 # logging
-log = "0.4"
-simple_logger = "4.0"
+log = { workspace = true }
+simple_logger = { workspace = true }
 # runtime
-tokio = { version = "1.24", features = ["rt", "macros"] }
+tokio = { workspace = true }
 # json
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1" }
-# http requests/urls/cookies
-reqwest = "0.11"
-url = "2.3"
-cookie = "0.16"
+serde = { workspace = true }
+serde_json = { workspace = true }
 # time
-chrono = "0.4.0"
-chrono-tz = "0.8.0"
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
 # database
-rusqlite = { git = "https://github.com/rusqlite/rusqlite.git", features = ["bundled", "serde_json"] }
+rusqlite = { workspace = true }
 # technical analysis
-ta = { git = "https://github.com/brandonros/ta-rs", rev = "fd5a4e876e6f8da485895a5dac29f9e093fbc259" }
+ta = { workspace = true }
 # common
 common = { path = "../common" }
-# providers
-providers = { path = "../providers" }
 # strategies
 strategies = { path = "../strategies" }

@@ -1,40 +1,11 @@
 use chrono::{Datelike, Utc, Weekday};
 use chrono_tz::US::Eastern;
+use common::candles;
 use common::database::Database;
 use common::structs::*;
 use common::utilities;
 use common::{database, structs::QuoteSnapshot};
 use strategies::supertrend::{SupertrendStrategy, SupertrendStrategyIndicatorSettings};
-
-fn get_candle_snapshots_from_database(
-  connection: &Database,
-  symbol: &str,
-  resolution: &str,
-  eastern_now_timestamp: i64,
-  regular_market_start_timestamp: i64,
-  candle_lookup_max_timestamp: i64,
-) -> Vec<CandleSnapshot> {
-  let query = format!(
-    "
-    select scraped_at,
-      timestamp, 
-      open, 
-      high, 
-      low,
-      close,
-      volume
-    from candles 
-    where timestamp >= {regular_market_start_timestamp} and timestamp <= {candle_lookup_max_timestamp}
-    and scraped_at = (select scraped_at from candles where scraped_at >= {regular_market_start_timestamp} and scraped_at <= {eastern_now_timestamp} order by scraped_at desc limit 1) 
-    and symbol = '{symbol}'
-    and resolution = '{resolution}'
-    ORDER BY timestamp ASC
-  "
-  );
-  // TODO: filter out current partial candle and only look at 100% closed candles?
-  // TODO: how to check if candle_scraper process crashed and data is stale/partial?
-  return connection.get_rows_from_database::<CandleSnapshot>(&query);
-}
 
 fn get_quote_snapshots_from_database(connection: &Database, symbol: &str, start_timestamp: i64, end_timestamp: i64) -> Vec<QuoteSnapshot> {
   let quotes_query = format!(
@@ -108,7 +79,7 @@ fn main() {
       // TODO: which is better, follow current timestamp with no delay or always look to previous closed candle?
       //let candle_lookup_max_timestamp = eastern_now_timestamp;
       let candle_lookup_max_timestamp = current_candle_start.timestamp() - 1;
-      let candle_snapshots = get_candle_snapshots_from_database(
+      let candle_snapshots = candles::get_live_candle_snapshots_from_database(
         &connection,
         symbol,
         resolution,

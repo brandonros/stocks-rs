@@ -5,25 +5,23 @@ edition = "2021"
 
 [dependencies]
 # logging
-simple_logger = "4.0"
-log = "0.4.17"
+simple_logger = { workspace = true }
+log = { workspace = true }
 # runtime
-tokio = { version = "1.24", features = ["rt", "macros"] }
+tokio = { workspace = true }
 # json
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1" }
-# http request
-reqwest = "0.11.13"
-url = "2.3.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 # time
-chrono = "0.4.0"
-chrono-tz = "0.8.0"
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
 # yahoo finance
-yahoo_finance_api = "1.0"
+yahoo_finance_api = { workspace = true }
 # common
 common = { path = "../common" }
 # providers
 providers = { path = "../providers" }
 # database
-rusqlite = { git = "https://github.com/rusqlite/rusqlite.git", features = ["bundled", "serde_json"] }
-dotenv = "0.15.0"
+rusqlite = { workspace = true }
+# env vars
+dotenv = { workspace = true }

@@ -1,5 +1,5 @@
-use chrono::{Datelike, Days, NaiveDateTime, TimeZone, Weekday, DateTime};
-use chrono_tz::{US::Eastern, Tz};
+use chrono::{DateTime, Datelike, Days, NaiveDateTime, TimeZone, Weekday};
+use chrono_tz::{Tz, US::Eastern};
 
 pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
   let parsed_from = NaiveDateTime::parse_from_str(from, "%Y-%m-%d %H:%M:%S").unwrap();
