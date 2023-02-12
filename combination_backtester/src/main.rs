@@ -41,18 +41,24 @@ fn generate_backtest_context_combinations() -> Vec<BacktestContext> {
 
 fn generate_trade_generation_context_combinations() -> Vec<TradeGenerationContext> {
   let mut combinations = vec![];
-  let min = dec!(0.0001);
-  let max = dec!(0.01);
-  let step = dec!(0.0001);
-  let divergence_thresholds = utilities::build_decimal_range(min, max, step);
-  for divergence_threshold in &divergence_thresholds {
-    let trade_generation_context = TradeGenerationContext {
-      vwap_std_dev_multiplier: 1.5,
-      warmup_periods: 10,
-      sma_periods: 10,
-      divergence_threshold: divergence_threshold.to_f64().unwrap()
-    };
-    combinations.push(trade_generation_context);
+  let min = dec!(1.00);
+  let max = dec!(3.00);
+  let step = dec!(0.1);
+  let oversold_z_distances = utilities::build_decimal_range(min, max, step);
+  let min = dec!(1.00);
+  let max = dec!(3.00);
+  let step = dec!(0.1);
+  let overbought_z_distances = utilities::build_decimal_range(min, max, step);
+  for oversold_z_distance in &oversold_z_distances {
+    for overbought_z_distance in &overbought_z_distances {
+      let trade_generation_context = TradeGenerationContext {
+        overbought_z_distance: overbought_z_distance.to_f64().unwrap(),
+        oversold_z_distance: oversold_z_distance.to_f64().unwrap(),
+        warmup_periods: 10,
+        sma_periods: 10
+      };
+      combinations.push(trade_generation_context);
+    }
   }
   return combinations;
 }
@@ -72,8 +78,10 @@ fn calculate_trade_result_performance(dates: &Vec<String>, dates_trades_results_
 
 fn print_progress(num_tested: usize, num_total: usize, start: Instant) {
   if num_tested % 100 == 0 {
+    let elapsed_ms = start.elapsed().as_millis();
     let elapsed_sec = start.elapsed().as_secs();
-    let rate_sec = num_tested as f64 / elapsed_sec as f64;
+    let rate_ms = num_tested as f64 / elapsed_ms as f64;
+    let rate_sec = rate_ms * 1000.0;
     let num_left = num_total - num_tested;
     let eta_sec = num_left as f64 / rate_sec as f64;
     log::info!("{}/{} elapsed {}s eta {:.0}s {:.2}/sec", num_tested, num_total, elapsed_sec, eta_sec, rate_sec)
@@ -98,23 +106,8 @@ fn main() {
   // build candles cache map
   let candles_date_map = cache::build_candles_date_map(&connection, symbol, resolution, &dates);
   // build list of combinations
-  //let trade_generation_context_combinations = generate_trade_generation_context_combinations();
-  //let backtest_context_combinations = generate_backtest_context_combinations();
-  let backtest_context_combinations = vec![
-    BacktestContext {
-      slippage_percentage: 0.000125,
-      stop_loss_percentage: -0.004,
-      profit_limit_percentage: 0.004
-    }
-  ];
-  let trade_generation_context_combinations = vec![
-    TradeGenerationContext {
-      vwap_std_dev_multiplier: 1.5,
-      divergence_threshold: 0.002,
-      sma_periods: 10,
-      warmup_periods: 10
-    }
-  ];
+  let trade_generation_context_combinations = generate_trade_generation_context_combinations();
+  let backtest_context_combinations = generate_backtest_context_combinations();
   let num_combinations = trade_generation_context_combinations.len() * backtest_context_combinations.len();
   log::info!("num_combinations = {}", num_combinations);
   // configure thread pool
@@ -131,7 +124,7 @@ fn main() {
       let dates_trades_results_map = backtesting::generate_dates_trades_results_map(&dates, &backtest_context, &candles_date_map, &dates_trades_map);
       // summarize trade results
       let compounded_profit_loss_percentage = calculate_trade_result_performance(&dates, &dates_trades_results_map);
-      if compounded_profit_loss_percentage >= 0.05 {
+      if compounded_profit_loss_percentage >= 0.10 {
         log::info!("trade_generation_context = {:?} backtest_context = {:?} {:.2}", trade_generation_context, backtest_context, compounded_profit_loss_percentage);
       }
       let mut combination_results = combination_results.lock().unwrap();

@@ -168,8 +168,8 @@ pub struct Trade {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct TradeGenerationContext {
-  pub vwap_std_dev_multiplier: f64,
-  pub divergence_threshold: f64,
+  pub oversold_z_distance: f64,
+  pub overbought_z_distance: f64,
   pub sma_periods: usize,
   pub warmup_periods: usize,
 }
