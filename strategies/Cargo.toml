@@ -7,7 +7,7 @@ edition = "2021"
 # common
 common = { path = "../common" }
 # json
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 # technical analysis
 ta = { git = "https://github.com/brandonros/ta-rs", rev = "fd5a4e876e6f8da485895a5dac29f9e093fbc259" }
