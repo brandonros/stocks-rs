@@ -42,19 +42,19 @@ fn generate_backtest_context_combinations() -> Vec<BacktestContext> {
 
 fn generate_trade_generation_context_combinations() -> Vec<TradeGenerationContext> {
   let mut combinations = vec![];
-  let min = dec!(1.00);
-  let max = dec!(3.00);
-  let step = dec!(0.1);
-  let oversold_z_distances = utilities::build_decimal_range(min, max, step);
-  let min = dec!(1.00);
-  let max = dec!(3.00);
-  let step = dec!(0.1);
-  let overbought_z_distances = utilities::build_decimal_range(min, max, step);
-  for oversold_z_distance in &oversold_z_distances {
-    for overbought_z_distance in &overbought_z_distances {
+  let min = 5;
+  let max = 30;
+  let step = 1;
+  let cci_periods = utilities::build_usize_range(min, max, step);
+  let min = 5;
+  let max = 30;
+  let step = 1;
+  let stoch_periods = utilities::build_usize_range(min, max, step);
+  for stoch_periods in &stoch_periods {
+    for cci_periods in &cci_periods {
       let trade_generation_context = TradeGenerationContext {
-        overbought_z_distance: overbought_z_distance.to_f64().unwrap(),
-        oversold_z_distance: oversold_z_distance.to_f64().unwrap(),
+        stoch_periods: *stoch_periods,
+        cci_periods: *cci_periods,
         warmup_periods: 10,
         sma_periods: 10
       };

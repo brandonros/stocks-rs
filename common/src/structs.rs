@@ -168,8 +168,8 @@ pub struct Trade {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct TradeGenerationContext {
-  pub oversold_z_distance: f64,
-  pub overbought_z_distance: f64,
+  pub cci_periods: usize,
+  pub stoch_periods: usize,
   pub sma_periods: usize,
   pub warmup_periods: usize,
 }
@@ -177,8 +177,8 @@ pub struct TradeGenerationContext {
 impl Default for TradeGenerationContext {
   fn default() -> Self {
     Self {
-      oversold_z_distance: 2.0,
-      overbought_z_distance: 2.0,
+      cci_periods: 10,
+      stoch_periods: 10,
       sma_periods: 10,
       warmup_periods: 10
     }
