@@ -2,7 +2,7 @@ use std::{collections::{HashMap}};
 
 use chrono::DateTime;
 use chrono_tz::Tz;
-use ta::{Next, DataItem};
+use ta::{Next};
 
 use crate::{market_session, structs::*, dates};
 
@@ -165,8 +165,11 @@ pub fn generate_dates_trades_map(
 }
 
 pub fn generate_continuous_trades(dates: &Vec<String>, trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Vec<Trade> {
-  let (start, _) = market_session::get_regular_market_session_start_and_end_from_string(&dates[0]);
-  let (_, end) = market_session::get_regular_market_session_start_and_end_from_string(&dates[dates.len() - 1]);
-  let direction_snapshots = generate_direction_snapshots(&trade_generation_context, start, end, &candles);
+  let mut direction_snapshots = vec![];
+  for date in dates {
+    let (regular_market_start, regular_market_end) = market_session::get_regular_market_session_start_and_end_from_string(date);
+    let mut date_direction_snapshots = generate_direction_snapshots(&trade_generation_context, regular_market_start, regular_market_end, &candles);
+    direction_snapshots.append(&mut date_direction_snapshots);
+  }
   return calculate_trades_from_direction_snapshots(&direction_snapshots);
 }

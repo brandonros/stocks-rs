@@ -124,22 +124,21 @@ fn main() {
     });
   });
   let mut combination_results = combination_results.lock().unwrap();
-  let min_num_trades = combination_results.iter().map(|combination_result| combination_result.num_trades).min().unwrap();
+  /*let min_num_trades = combination_results.iter().map(|combination_result| combination_result.num_trades).min().unwrap();
   let max_num_trades = combination_results.iter().map(|combination_result| combination_result.num_trades).max().unwrap();
   let min_compounded_profit_loss_percentage = combination_results.iter().map(|combination_result| OrderedFloat(combination_result.compounded_profit_loss_percentage)).min().unwrap().into_inner();
-  let max_compounded_profit_loss_percentage = combination_results.iter().map(|combination_result| OrderedFloat(combination_result.compounded_profit_loss_percentage)).max().unwrap().into_inner();
+  let max_compounded_profit_loss_percentage = combination_results.iter().map(|combination_result| OrderedFloat(combination_result.compounded_profit_loss_percentage)).max().unwrap().into_inner();*/
   combination_results.sort_by(|a, b| {
-    let a_num_trades = math::normalize(a.num_trades as f64, min_num_trades as f64, max_num_trades as f64);
+    /*let a_num_trades = math::normalize(a.num_trades as f64, min_num_trades as f64, max_num_trades as f64);
     let b_num_trades = math::normalize(b.num_trades as f64, min_num_trades as f64, max_num_trades as f64);
     let a_compounded_profit_loss_percentage = math::normalize(a.compounded_profit_loss_percentage, min_compounded_profit_loss_percentage, max_compounded_profit_loss_percentage);
     let b_compounded_profit_loss_percentage = math::normalize(b.compounded_profit_loss_percentage, min_compounded_profit_loss_percentage, max_compounded_profit_loss_percentage);
     let num_trades_weight = 0.10;
     let compounded_profit_loss_percentage_weight = 0.90;
     let a_score = num_trades_weight * (1.0 - a_num_trades) + compounded_profit_loss_percentage_weight * (a_compounded_profit_loss_percentage);
-    let b_score = num_trades_weight * (1.0 - b_num_trades) + compounded_profit_loss_percentage_weight * (b_compounded_profit_loss_percentage);
-    if a_score.is_nan() {
-      log::info!("here");
-    }
+    let b_score = num_trades_weight * (1.0 - b_num_trades) + compounded_profit_loss_percentage_weight * (b_compounded_profit_loss_percentage);*/
+    let a_score = a.compounded_profit_loss_percentage;
+    let b_score = b.compounded_profit_loss_percentage;
     return b_score.partial_cmp(&a_score).unwrap();
   });
   let best_combination_result = &combination_results[0];
