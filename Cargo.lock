@@ -330,6 +330,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "log",
+ "ordered-float",
  "reqwest",
  "rusqlite",
  "rust_decimal",

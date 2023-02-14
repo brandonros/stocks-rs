@@ -158,9 +158,8 @@ pub struct Trade {
 pub struct TradeGenerationContext {
   pub sma_periods: usize,
   pub warmup_periods: usize,
-  pub median_up_deviation: f64,
-  pub median_down_deviation: f64,
-  pub band_boost: f64
+  pub oversold_z_distance: f64,
+  pub overbought_z_distance: f64
 }
 
 
@@ -169,9 +168,8 @@ impl Default for TradeGenerationContext {
     Self {
       sma_periods: 10,
       warmup_periods: 10,
-      median_up_deviation: 1.0003,
-      median_down_deviation: 0.9998,
-      band_boost: 1.0
+      oversold_z_distance: -2.5,
+      overbought_z_distance: 2.5
     }
   }
 }

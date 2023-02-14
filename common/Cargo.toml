@@ -22,6 +22,7 @@ chrono-tz = { workspace = true }
 black_scholes = { workspace = true }
 # decimal
 rust_decimal = { workspace = true }
+ordered-float = { workspace = true }
 # error handling
 anyhow = { workspace = true }
 # technical analysis

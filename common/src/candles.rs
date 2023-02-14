@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use ordered_float::OrderedFloat;
 
 use crate::{database::*, structs::*};
 
@@ -69,4 +70,25 @@ pub fn get_candles_by_date_as_continuous_vec(dates: &Vec<String>, candles_date_m
     candles.append(&mut date_candles);
   }
   return candles;
+}
+
+pub fn convert_timeframe(candles: &Vec<Candle>, source_timeframe: usize, target_timeframe: usize) -> Vec<Candle> {
+  assert!(source_timeframe == 1);
+  let chunks: Vec<&[Candle]> = candles.chunks(target_timeframe).collect();
+  return chunks.into_iter().map(|chunk| {
+    let timestamp = chunk[0].timestamp;
+    let open = chunk[0].open;
+    let low = chunk.iter().map(|candle| OrderedFloat(candle.low)).min().unwrap().into_inner();
+    let high = chunk.iter().map(|candle| OrderedFloat(candle.high)).max().unwrap().into_inner();
+    let close = chunk[target_timeframe - 1].close;
+    let volume = chunk.iter().fold(0, |prev, candle| prev + candle.volume);
+    return Candle {
+      timestamp,
+      open,
+      high,
+      low,
+      close,
+      volume
+    };
+  }).collect();
 }

@@ -102,6 +102,8 @@ fn main() {
   let combination_results: Vec<CombinationBacktestResult> = vec![];
   let combination_results = Arc::new(Mutex::new(combination_results));
   let candles = candles::get_candles_by_date_as_continuous_vec(&dates, &candles_date_map);
+  let candles = candles::convert_timeframe(&candles, 1, 5);
+  log::info!("{} {}", dates.len(), candles.len());
   trade_generation_context_combinations.par_iter().for_each(|trade_generation_context| {
     // build list of trades
     let trades = trading::generate_continuous_trades(&dates, &trade_generation_context, &candles);

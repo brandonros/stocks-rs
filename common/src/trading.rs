@@ -15,7 +15,35 @@ fn pine_sma(values: &Vec<f64>, periods: usize) -> Vec<f64> {
   return results;
 }
 
-fn calculate_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
+fn calculate_vwap_zscore_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
+  // mean = sum(volume*close,pds)/sum(volume,pds)
+  let periods = trade_generation_context.sma_periods;
+  let most_recent_candles = candles.as_slice()[candles.len()-periods..].to_vec();
+  let mean_dividend: f64 = most_recent_candles.iter().map(|candle| candle.volume as f64 * candle.close).sum();
+  let mean_divisor: f64 = most_recent_candles.iter().map(|candle| candle.volume as f64).sum();
+  let mean = mean_dividend / mean_divisor;
+  // vwapsd = sqrt(sma(pow(close-mean, 2), pds) )
+  let mut indicator = ta::indicators::SimpleMovingAverage::new(periods).unwrap();
+  let mut last_sma = 0.0;
+  for candle in candles {
+    last_sma = indicator.next((candle.close - mean).powf(2.0));
+  }
+  let vwapsd = last_sma.sqrt();
+  // (close-mean)/vwapsd
+  let most_recent_close = candles[candles.len() - 1].close;
+  let z_distance = (most_recent_close - mean) / vwapsd;
+  // oversold
+  if z_distance <= (trade_generation_context.oversold_z_distance * -1.0) {
+    return Direction::Long;
+  }
+  // overbought
+  if z_distance >= trade_generation_context.overbought_z_distance {
+    return Direction::Short;
+  }
+  return Direction::Flat;
+}
+
+/*fn calculate_fair_value_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
   let sma_periods = trade_generation_context.sma_periods;
   let median_up_deviation = trade_generation_context.median_up_deviation;
   let median_down_deviation = trade_generation_context.median_down_deviation;
@@ -41,7 +69,7 @@ fn calculate_direction(trade_generation_context: &TradeGenerationContext, candle
     return Direction::Long;
   }
   return Direction::Flat;
-}
+}*/
 
 fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<DirectionSnapshot>) -> Vec<Trade> {
   let mut buckets: Vec<Vec<DirectionSnapshot>> = Vec::new();
@@ -132,7 +160,7 @@ fn generate_direction_snapshots(
       continue;
     }
     // calculate direction
-    let direction = calculate_direction(trade_generation_context, &reduced_candles);
+    let direction = calculate_vwap_zscore_direction(trade_generation_context, &reduced_candles);
     direction_snapshots.push(DirectionSnapshot {
       timestamp: pointer.timestamp(),
       direction,
