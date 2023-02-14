@@ -1,8 +1,47 @@
 use std::{collections::{HashMap}};
 
+use chrono::DateTime;
+use chrono_tz::Tz;
 use ta::{Next, DataItem};
 
 use crate::{market_session, structs::*};
+
+fn pine_sma(values: &Vec<f64>, periods: usize) -> Vec<f64> {
+  let mut indicator = ta::indicators::SimpleMovingAverage::new(periods).unwrap();
+  let mut results = vec![];
+  for value in values {
+    results.push(indicator.next(*value));
+  }
+  return results;
+}
+
+fn calculate_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
+  let sma_periods = 20;
+  let median_up_deviation = 1.0003;
+  let median_down_deviation = 0.9998;
+  let band_boost = 1.0;
+  let ohlc4s: Vec<f64> = candles.iter().map(|candle| {
+    return (candle.open + candle.high + candle.low + candle.close) / 4.0;
+  }).collect();
+  let ohlc4_sma = pine_sma(&ohlc4s, sma_periods);
+  let fair_price_smooth = ohlc4_sma[ohlc4_sma.len() - 1];
+  let upper_band = fair_price_smooth * median_up_deviation;
+  let lower_band = fair_price_smooth * median_down_deviation;
+  let band_up_spread = upper_band - fair_price_smooth;
+  let band_down_spread = fair_price_smooth - lower_band;
+  let upper_band_boosted = fair_price_smooth + (band_up_spread * band_boost);
+  let lower_band_boosted = fair_price_smooth - (band_down_spread * band_boost);
+  let most_recent_candle = &candles[candles.len() - 1];
+  let trend_rule_up = most_recent_candle.low > upper_band_boosted;
+  let trend_rule_down = most_recent_candle.high < lower_band_boosted;
+  if trend_rule_down {
+    return Direction::Short;
+  }
+  if trend_rule_up {
+    return Direction::Long;
+  }
+  return Direction::Flat;
+}
 
 fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<DirectionSnapshot>) -> Vec<Trade> {
   let mut buckets: Vec<Vec<DirectionSnapshot>> = Vec::new();
@@ -70,130 +109,17 @@ fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<Direction
     .collect();
 }
 
-fn value_to_data_item(value: f64) -> DataItem {
-  return DataItem::builder()
-    .open(value)
-    .high(value)
-    .low(value)
-    .close(value)
-    .build()
-    .unwrap();
-}
-
-fn candle_to_data_item(candle: &Candle) -> DataItem {
-  return DataItem::builder()
-    .open(candle.open)
-    .high(candle.high)
-    .low(candle.low)
-    .close(candle.close)
-    .volume(candle.volume as f64)
-    .build()
-    .unwrap();
-}
-
-fn pine_cci(candles: &Vec<Candle>, periods: usize) -> Vec<f64> {
-  let mut indicator = ta::indicators::CommodityChannelIndex::new(periods).unwrap();
-  let mut results = vec![];
-  for candle in candles {
-    results.push(indicator.next(&candle_to_data_item(candle)));
-  }
-  return results;
-}
-
-fn pine_sma(values: &Vec<f64>, periods: usize) -> Vec<f64> {
-  let mut indicator = ta::indicators::SimpleMovingAverage::new(periods).unwrap();
-  let mut results = vec![];
-  for value in values {
-    results.push(indicator.next(*value));
-  }
-  return results;
-}
-
-fn pine_stoch(values: &Vec<f64>, periods: usize) -> Vec<f64> {
-  let mut indicator = ta::indicators::FastStochastic::new(periods).unwrap();
-  let mut results = vec![];
-  for value in values {
-    results.push(indicator.next(*value));
-  }
-  return results;
-}
-
-/*
-CCI Stochastic and a quick lesson on Scalping & Trading Systems by Daveatt 
-
-source = input(close)
-cci_period = input(28, "CCI Period")
-stoch_period = input(28, "Stoch Period")
-stoch_smooth_k = input(3, "Stoch Smooth K")
-stoch_smooth_d = input(3, "Stoch Smooth D")
-d_or_k = input(defval="D", options=["D", "K"])
-OB = input(80, "Overbought", type=input.integer)
-OS = input(20, "Oversold", type=input.integer)
-
-stoch = 100 * (close - min(low, length)) / (max(high, length) - min(low, length)).
-cci = cci(source, cci_period)
-stoch_cci_k = sma(stoch(cci, cci, cci, stoch_period), stoch_smooth_k)
-stoch_cci_d = sma(stoch_cci_k, stoch_smooth_d)
-
-ma = (d_or_k == "D") ? stoch_cci_d : stoch_cci_k
-
-trend_enter = if showArrowsEnter
-    if crossunder(ma, OS)
-        1
-    else
-        if crossover(ma, OB)
-            -1
-trend_exit = if showArrowsExit
-    if crossunder(ma, OB)
-        -1
-    else
-        if crossover(ma, OS)
-            1
-
-trend_center = if showArrowsCenter
-    if crossunder(ma, 50)
-        -1
-    else
-        if crossover(ma, 50)
-            1
-*/
-
-fn calculate_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
-  let cci_periods = trade_generation_context.cci_periods;
-  let stoch_periods = trade_generation_context.stoch_periods;
-  let stoch_smooth_k = 3;
-  let stoch_smooth_d = 3;
-  let overbought = 80.0;
-  let oversold = 20.0;
-  let ccis = pine_cci(candles, cci_periods);
-  let stochs = pine_stoch(&ccis, stoch_periods);
-  let stoch_cci_k = pine_sma(&stochs, stoch_smooth_k);
-  let stoch_cci_d = pine_sma(&stoch_cci_k, stoch_smooth_d);
-  if stoch_cci_d.len() > 0 {
-    let ma = *stoch_cci_d.last().unwrap();
-    if ma <= oversold {
-      return Direction::Long;
-    }
-    if ma >= overbought {
-      return Direction::Short;
-    }
-  }
-  return Direction::Flat;
-}
-
 fn generate_direction_snapshots(
   trade_generation_context: &TradeGenerationContext,
-  date: &str,
-  date_candles: &Vec<Candle>,
-  strategy_name: &str,
+  start: DateTime<Tz>,
+  end: DateTime<Tz>,
+  candles: &Vec<Candle>,
 ) -> Vec<DirectionSnapshot> {
-  assert!(strategy_name == "vwap_hlc3_divergence"); // TODO: more strategies?
-  let (regular_market_start, regular_market_end) = market_session::get_regular_market_session_start_and_end_from_string(date);
-  let mut pointer = regular_market_start;
+  let mut pointer = start;
   let mut direction_snapshots: Vec<DirectionSnapshot> = vec![];
   // iterate over every minute of the trading day, making sure we do not include the end of the most recent candle because it would not be known in a live situation
-  while pointer <= regular_market_end {
-    let reduced_candles: Vec<Candle> = date_candles
+  while pointer <= end {
+    let reduced_candles: Vec<Candle> = candles
       .iter()
       .cloned()
       .filter(|candle| return candle.timestamp < pointer.timestamp())
@@ -217,13 +143,13 @@ fn generate_direction_snapshots(
 pub fn generate_dates_trades_map(
   dates: &Vec<String>,
   trade_generation_context: &TradeGenerationContext,
-  strategy_name: &str,
   candles_date_map: &HashMap<String, Vec<Candle>>,
 ) -> HashMap<String, Vec<Trade>> {
   let mut dates_trades_map = HashMap::new();
   for date in dates {
     let date_candles = candles_date_map.get(date).unwrap();
-    let direction_snapshots = generate_direction_snapshots(&trade_generation_context, date, date_candles, &strategy_name);
+    let (regular_market_start, regular_market_end) = market_session::get_regular_market_session_start_and_end_from_string(date);
+    let direction_snapshots = generate_direction_snapshots(&trade_generation_context, regular_market_start, regular_market_end, date_candles);
     if direction_snapshots.is_empty() {
       //log::warn!("date = {} direction_snapshots.is_empty()", date);
       dates_trades_map.insert(date.clone(), vec![]);
@@ -234,4 +160,11 @@ pub fn generate_dates_trades_map(
     dates_trades_map.insert(date.clone(), date_trades);
   }
   return dates_trades_map;
+}
+
+pub fn generate_continuous_trades(dates: &Vec<String>, trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Vec<Trade> {
+  let (start, _) = market_session::get_regular_market_session_start_and_end_from_string(&dates[0]);
+  let (_, end) = market_session::get_regular_market_session_start_and_end_from_string(&dates[dates.len() - 1]);
+  let direction_snapshots = generate_direction_snapshots(&trade_generation_context, start, end, &candles);
+  return calculate_trades_from_direction_snapshots(&direction_snapshots);
 }

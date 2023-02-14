@@ -6,6 +6,7 @@ use std::time::Instant;
 use common::backtesting;
 use common::backtesting::TradeBacktestResult;
 use common::cache;
+use common::candles;
 use common::database;
 use common::math;
 use common::structs::*;
@@ -64,16 +65,13 @@ fn generate_trade_generation_context_combinations() -> Vec<TradeGenerationContex
   return combinations;
 }
 
-fn calculate_trade_result_performance(dates: &Vec<String>, dates_trades_results_map: &HashMap<String, Vec<TradeBacktestResult>>) -> (usize, f64) {
+fn calculate_trade_result_performance(trade_results: &Vec<TradeBacktestResult>) -> (usize, f64) {
   let starting_balance = 1000.00;
   let mut balance = starting_balance;
   let mut num_trades = 0;
-  for date in dates {
-    let date_trade_results = dates_trades_results_map.get(date).unwrap();
-    for date_trade_result in date_trade_results {
-      balance *= 1.0 + date_trade_result.profit_loss_percentage;
-      num_trades += 1;
-    }
+  for trade_result in trade_results {
+    balance *= 1.0 + trade_result.profit_loss_percentage;
+    num_trades += 1;
   }
   let compounded_profit_loss_percentage = math::calculate_percentage_increase(starting_balance, balance);
   return (num_trades, compounded_profit_loss_percentage);
@@ -97,11 +95,10 @@ fn main() {
   // config
   let args: Vec<String> = std::env::args().collect();
   let provider_name = args.get(1).unwrap();
-  let strategy_name = args.get(2).unwrap();
-  let symbol = args.get(3).unwrap();
-  let resolution = args.get(4).unwrap();
-  let dates_start = format!("{} 00:00:00", args.get(5).unwrap());
-  let dates_end = format!("{} 00:00:00", args.get(6).unwrap());
+  let symbol = args.get(2).unwrap();
+  let resolution = args.get(3).unwrap();
+  let dates_start = format!("{} 00:00:00", args.get(4).unwrap());
+  let dates_end = format!("{} 00:00:00", args.get(5).unwrap());
   let dates = common::dates::build_list_of_dates(&dates_start, &dates_end);
   // open database + init database tables
   let database_filename = format!("./database-{}.db", provider_name);
@@ -122,12 +119,13 @@ fn main() {
   let combination_results = Arc::new(Mutex::new(combination_results));
   trade_generation_context_combinations.par_iter().for_each(|trade_generation_context| {
     // build list of trades
-    let dates_trades_map = trading::generate_dates_trades_map(&dates, &trade_generation_context, strategy_name, &candles_date_map);
+    let candles = candles::get_candles_by_date_as_continuous_vec(&dates, &candles_date_map);
+    let trades = trading::generate_continuous_trades(&dates, &trade_generation_context, &candles);
     // backtest trades
     backtest_context_combinations.par_iter().for_each(|backtest_context| {
-      let dates_trades_results_map = backtesting::generate_dates_trades_results_map(&dates, &backtest_context, &candles_date_map, &dates_trades_map);
+      let trade_results = backtesting::generate_trades_results(backtest_context, &trades, &candles);
       // summarize trade results
-      let (num_trades, compounded_profit_loss_percentage) = calculate_trade_result_performance(&dates, &dates_trades_results_map);
+      let (num_trades, compounded_profit_loss_percentage) = calculate_trade_result_performance(&trade_results);
       if compounded_profit_loss_percentage >= 0.10 {
         log::info!("trade_generation_context = {:?} backtest_context = {:?} {:.2}", trade_generation_context, backtest_context, compounded_profit_loss_percentage);
       }
