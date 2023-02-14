@@ -4,7 +4,7 @@ use chrono::DateTime;
 use chrono_tz::Tz;
 use ta::{Next, DataItem};
 
-use crate::{market_session, structs::*};
+use crate::{market_session, structs::*, dates};
 
 fn pine_sma(values: &Vec<f64>, periods: usize) -> Vec<f64> {
   let mut indicator = ta::indicators::SimpleMovingAverage::new(periods).unwrap();
@@ -16,10 +16,10 @@ fn pine_sma(values: &Vec<f64>, periods: usize) -> Vec<f64> {
 }
 
 fn calculate_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
-  let sma_periods = 20;
-  let median_up_deviation = 1.0003;
-  let median_down_deviation = 0.9998;
-  let band_boost = 1.0;
+  let sma_periods = trade_generation_context.sma_periods;
+  let median_up_deviation = trade_generation_context.median_up_deviation;
+  let median_down_deviation = trade_generation_context.median_down_deviation;
+  let band_boost = trade_generation_context.band_boost;
   let ohlc4s: Vec<f64> = candles.iter().map(|candle| {
     return (candle.open + candle.high + candle.low + candle.close) / 4.0;
   }).collect();
@@ -100,6 +100,8 @@ fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<Direction
       return Trade {
         start_timestamp: bucket[0].timestamp,
         end_timestamp: bucket[bucket.len() - 1].timestamp,
+        formatted_start_timestamp: dates::format_timestamp(bucket[0].timestamp),
+        formatted_end_timestamp: dates::format_timestamp(bucket[bucket.len() - 1].timestamp),
         direction: bucket[0].direction,
       };
     })

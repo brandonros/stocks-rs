@@ -64,6 +64,7 @@ pub fn get_candles_by_date_as_continuous_vec(dates: &Vec<String>, candles_date_m
   let mut candles = vec![];
   for date in dates {
     let mut date_candles = candles_date_map.get(date).unwrap().clone();
+    log::info!("{} {}", date, date_candles.len());
     candles.append(&mut date_candles);
   }
   return candles;

@@ -13,7 +13,7 @@ fn main() {
   let symbol = args.get(2).unwrap();
   let resolution = args.get(3).unwrap();
   let dates_start = format!("{} 00:00:00", args.get(4).unwrap());
-  let dates_end = format!("{} 00:00:00", args.get(5).unwrap());
+  let dates_end = format!("{} 15:59:59", args.get(5).unwrap());
   let dates = common::dates::build_list_of_dates(&dates_start, &dates_end);
   // open database + init database tables
   let database_filename = format!("./database-{}.db", provider_name);

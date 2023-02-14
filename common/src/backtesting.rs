@@ -2,7 +2,7 @@ use std::{collections::{HashMap}};
 
 use serde::Serialize;
 
-use crate::{math, structs::*};
+use crate::{math, structs::*, dates};
 
 #[derive(PartialEq, Serialize, Debug)]
 pub enum Outcome {
@@ -16,6 +16,8 @@ pub struct TradeBacktestResult {
   pub direction: Direction,
   pub start_timestamp: i64,
   pub exit_timestamp: i64,
+  pub formatted_start_timestamp: String,
+  pub formatted_exit_timestamp: String,
   pub outcome: Outcome,
   pub open_price: f64,
   pub exit_price: f64,
@@ -57,6 +59,8 @@ fn calculate_trade_result(
         direction: trade_direction.clone(),
         start_timestamp,
         exit_timestamp: trade_candle.timestamp,
+        formatted_start_timestamp: dates::format_timestamp(start_timestamp),
+        formatted_exit_timestamp: dates::format_timestamp(trade_candle.timestamp),
         outcome: Outcome::StopLoss,
         exit_price,
         profit_loss,
@@ -81,6 +85,8 @@ fn calculate_trade_result(
         direction: trade_direction.clone(),
         start_timestamp,
         exit_timestamp: trade_candle.timestamp,
+        formatted_start_timestamp: dates::format_timestamp(start_timestamp),
+        formatted_exit_timestamp: dates::format_timestamp(trade_candle.timestamp),
         outcome: Outcome::ProfitLimit,
         exit_price,
         profit_loss,
@@ -100,6 +106,8 @@ fn calculate_trade_result(
     direction: trade_direction.clone(),
     start_timestamp,
     exit_timestamp: trade_end_candle.timestamp,
+    formatted_start_timestamp: dates::format_timestamp(start_timestamp),
+    formatted_exit_timestamp: dates::format_timestamp(trade_end_candle.timestamp),
     outcome: Outcome::DirectionChange,
     exit_price,
     profit_loss,

@@ -139,20 +139,6 @@ pub enum BacktestOutcome {
   DirectionChange,
 }
 
-#[derive(Serialize, Clone, Debug)]
-pub struct ReducedBacktestResult {
-  pub open_price: f64,
-  pub exit_price: f64,
-  pub profit_limit_price: f64,
-  pub stop_loss_price: f64,
-  pub outcome: BacktestOutcome,
-  pub trade_entry_snapshot: SignalSnapshot,
-  pub trade_exit_snapshot: SignalSnapshot,
-  pub trade_duration: i64,
-  pub profit_loss: f64,
-  pub profit_loss_percentage: f64,
-}
-
 #[derive(Serialize, Clone)]
 pub struct DirectionSnapshot {
   pub timestamp: i64,
@@ -163,24 +149,29 @@ pub struct DirectionSnapshot {
 pub struct Trade {
   pub start_timestamp: i64,
   pub end_timestamp: i64,
+  pub formatted_start_timestamp: String,
+  pub formatted_end_timestamp: String,
   pub direction: Direction,
 }
 
 #[derive(Debug, Serialize, Clone)]
 pub struct TradeGenerationContext {
-  pub cci_periods: usize,
-  pub stoch_periods: usize,
   pub sma_periods: usize,
   pub warmup_periods: usize,
+  pub median_up_deviation: f64,
+  pub median_down_deviation: f64,
+  pub band_boost: f64
 }
+
 
 impl Default for TradeGenerationContext {
   fn default() -> Self {
     Self {
-      cci_periods: 10,
-      stoch_periods: 10,
       sma_periods: 10,
-      warmup_periods: 10
+      warmup_periods: 1,
+      median_up_deviation: 1.0003,
+      median_down_deviation: 0.9998,
+      band_boost: 1.0
     }
   }
 }

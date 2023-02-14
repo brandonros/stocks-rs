@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;
@@ -21,10 +22,10 @@ use rust_decimal_macros::dec;
 fn generate_backtest_context_combinations() -> Vec<BacktestContext> {
   let mut combinations = vec![];
   let min = dec!(0.001);
-  let max = dec!(0.005);
+  let max = dec!(0.01);
   let step = dec!(0.001);
   let profit_limit_percentages = utilities::build_decimal_range(min, max, step);
-  let min = dec!(-0.005);
+  let min = dec!(-0.01);
   let max = dec!(-0.001);
   let step = dec!(0.001);
   let stop_loss_percentages = utilities::build_decimal_range(min, max, step);
@@ -42,27 +43,10 @@ fn generate_backtest_context_combinations() -> Vec<BacktestContext> {
 }
 
 fn generate_trade_generation_context_combinations() -> Vec<TradeGenerationContext> {
-  let mut combinations = vec![];
-  let min = 5;
-  let max = 30;
-  let step = 1;
-  let cci_periods = utilities::build_usize_range(min, max, step);
-  let min = 5;
-  let max = 30;
-  let step = 1;
-  let stoch_periods = utilities::build_usize_range(min, max, step);
-  for stoch_periods in &stoch_periods {
-    for cci_periods in &cci_periods {
-      let trade_generation_context = TradeGenerationContext {
-        stoch_periods: *stoch_periods,
-        cci_periods: *cci_periods,
-        warmup_periods: 10,
-        sma_periods: 10
-      };
-      combinations.push(trade_generation_context);
-    }
-  }
-  return combinations;
+  // TODO
+  return vec![
+    TradeGenerationContext::default()
+  ];
 }
 
 fn calculate_trade_result_performance(trade_results: &Vec<TradeBacktestResult>) -> (usize, f64) {
@@ -98,7 +82,7 @@ fn main() {
   let symbol = args.get(2).unwrap();
   let resolution = args.get(3).unwrap();
   let dates_start = format!("{} 00:00:00", args.get(4).unwrap());
-  let dates_end = format!("{} 00:00:00", args.get(5).unwrap());
+  let dates_end = format!("{} 15:59:59", args.get(5).unwrap());
   let dates = common::dates::build_list_of_dates(&dates_start, &dates_end);
   // open database + init database tables
   let database_filename = format!("./database-{}.db", provider_name);
@@ -117,9 +101,9 @@ fn main() {
   let start = std::time::Instant::now();
   let combination_results: Vec<CombinationBacktestResult> = vec![];
   let combination_results = Arc::new(Mutex::new(combination_results));
+  let candles = candles::get_candles_by_date_as_continuous_vec(&dates, &candles_date_map);
   trade_generation_context_combinations.par_iter().for_each(|trade_generation_context| {
     // build list of trades
-    let candles = candles::get_candles_by_date_as_continuous_vec(&dates, &candles_date_map);
     let trades = trading::generate_continuous_trades(&dates, &trade_generation_context, &candles);
     // backtest trades
     backtest_context_combinations.par_iter().for_each(|backtest_context| {
@@ -149,12 +133,22 @@ fn main() {
     let b_num_trades = math::normalize(b.num_trades as f64, min_num_trades as f64, max_num_trades as f64);
     let a_compounded_profit_loss_percentage = math::normalize(a.compounded_profit_loss_percentage, min_compounded_profit_loss_percentage, max_compounded_profit_loss_percentage);
     let b_compounded_profit_loss_percentage = math::normalize(b.compounded_profit_loss_percentage, min_compounded_profit_loss_percentage, max_compounded_profit_loss_percentage);
-    let num_trades_weight = 0.25;
-    let compounded_profit_loss_percentage_weight = 0.75;
+    let num_trades_weight = 0.10;
+    let compounded_profit_loss_percentage_weight = 0.90;
     let a_score = num_trades_weight * (1.0 - a_num_trades) + compounded_profit_loss_percentage_weight * (a_compounded_profit_loss_percentage);
     let b_score = num_trades_weight * (1.0 - b_num_trades) + compounded_profit_loss_percentage_weight * (b_compounded_profit_loss_percentage);
     return b_score.partial_cmp(&a_score).unwrap();
   });
   let best_combination_result = &combination_results[0];
   log::info!("best_combination_result = {}", serde_json::to_string(&best_combination_result).unwrap());
+  // flush trades to file?
+  let trades = trading::generate_continuous_trades(&dates, &best_combination_result.trade_generation_context, &candles);
+  let stringified_value = serde_json::to_string_pretty(&trades).unwrap();
+  let mut file = std::fs::File::create(format!("/tmp/trades.json")).unwrap();
+  file.write_all(stringified_value.as_bytes()).unwrap();
+  // flush backtest results to file
+  let trade_results = backtesting::generate_trades_results(&best_combination_result.backtest_context, &trades, &candles);
+  let stringified_value = serde_json::to_string_pretty(&trade_results).unwrap();
+  let mut file = std::fs::File::create(format!("/tmp/trade-results.json")).unwrap();
+  file.write_all(stringified_value.as_bytes()).unwrap();
 }

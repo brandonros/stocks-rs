@@ -6,6 +6,7 @@ pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
   let parsed_to = NaiveDateTime::parse_from_str(to, "%Y-%m-%d %H:%M:%S").unwrap();
   let from = Eastern.from_local_datetime(&parsed_from).unwrap();
   let to = Eastern.from_local_datetime(&parsed_to).unwrap();
+  log::info!("from = {} to = {}", from, to);
   let mut results = vec![];
   let mut pointer = from;
   while pointer.timestamp() <= to.timestamp() {

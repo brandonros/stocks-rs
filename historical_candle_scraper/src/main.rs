@@ -11,7 +11,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let provider_name = args.get(1).unwrap();
     let start_date = format!("{} 00:00:00", args.get(2).unwrap());
-    let end_date = format!("{} 00:00:00", args.get(3).unwrap());
+    let end_date = format!("{} 15:59:59", args.get(3).unwrap());
     // config
     let symbol = "SPY";
     let resolution = "1";
