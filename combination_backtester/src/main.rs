@@ -23,11 +23,11 @@ fn generate_backtest_context_combinations() -> Vec<BacktestContext> {
   let mut combinations = vec![];
   let min = dec!(0.001);
   let max = dec!(0.01);
-  let step = dec!(0.001);
+  let step = dec!(0.0005);
   let profit_limit_percentages = utilities::build_decimal_range(min, max, step);
   let min = dec!(-0.01);
   let max = dec!(-0.001);
-  let step = dec!(0.001);
+  let step = dec!(0.0005);
   let stop_loss_percentages = utilities::build_decimal_range(min, max, step);
   for profit_limit_percentage in &profit_limit_percentages {
     for stop_loss_percentage in &stop_loss_percentages {
@@ -137,6 +137,9 @@ fn main() {
     let compounded_profit_loss_percentage_weight = 0.90;
     let a_score = num_trades_weight * (1.0 - a_num_trades) + compounded_profit_loss_percentage_weight * (a_compounded_profit_loss_percentage);
     let b_score = num_trades_weight * (1.0 - b_num_trades) + compounded_profit_loss_percentage_weight * (b_compounded_profit_loss_percentage);
+    if a_score.is_nan() {
+      log::info!("here");
+    }
     return b_score.partial_cmp(&a_score).unwrap();
   });
   let best_combination_result = &combination_results[0];

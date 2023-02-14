@@ -86,5 +86,8 @@ pub fn calculate_worst_case_scenario_price(trade_direction: &Direction, candle: 
 }
 
 pub fn normalize(x: f64, min: f64, max: f64) -> f64 {
+  if min == max {
+    return 0.0;
+  }
   return (x - min) / (max - min);
 }

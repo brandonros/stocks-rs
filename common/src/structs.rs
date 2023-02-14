@@ -168,7 +168,7 @@ impl Default for TradeGenerationContext {
   fn default() -> Self {
     Self {
       sma_periods: 10,
-      warmup_periods: 1,
+      warmup_periods: 10,
       median_up_deviation: 1.0003,
       median_down_deviation: 0.9998,
       band_boost: 1.0

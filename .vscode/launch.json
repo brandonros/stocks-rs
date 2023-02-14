@@ -7,21 +7,20 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "signal_backtester",
+      "name": "combination_backtester",
       "cargo": {
         "args": [
           "build",
           "--bin",
-          "signal_backtester"
+          "combination_backtester"
         ]
       },
       "args": [
         "polygon",
-        "supertrend",
         "SPY",
         "1",
-        "2023-02-03",
-        "2023-02-03"
+        "2023-02-10",
+        "2023-02-13"
       ]
     }
   ]

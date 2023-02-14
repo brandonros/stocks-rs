@@ -1,6 +1,6 @@
 use std::{collections::HashMap};
 
-use crate::{candles, database::*, market_session, structs::*};
+use crate::{candles, database::*, market_session, structs::*, dates};
 
 pub fn build_candles_date_map(connection: &Database, symbol: &str, resolution: &str, dates: &Vec<String>) -> HashMap<String, Vec<Candle>> {
   let mut candles_date_map = HashMap::new();
@@ -8,6 +8,7 @@ pub fn build_candles_date_map(connection: &Database, symbol: &str, resolution: &
     let (regular_market_start, regular_market_end) = market_session::get_regular_market_session_start_and_end_from_string(date);
     let regular_market_start_timestamp = regular_market_start.timestamp();
     let regular_market_end_timestamp = regular_market_end.timestamp();
+    log::info!("date = {} regular_market_start_timestamp = {} regular_market_start_timestamp = {}", date, dates::format_timestamp(regular_market_start_timestamp), dates::format_timestamp(regular_market_end_timestamp));
     // get candles from database
     let candle_snapshots =
       candles::get_candle_snapshots_from_database(&connection, symbol, resolution, regular_market_start_timestamp, regular_market_end_timestamp);
@@ -28,6 +29,8 @@ pub fn build_candles_date_map(connection: &Database, symbol: &str, resolution: &
     for candle in candles {
       date_candles.push(candle.clone());
     }
+    log::info!("{}", date);
+    assert_eq!(date_candles.len(), 390);
     candles_date_map.insert(date.clone(), date_candles);
   }
   return candles_date_map;

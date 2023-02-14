@@ -20,6 +20,7 @@ pub fn get_candle_snapshots_from_database(
       volume
     from candles 
     where timestamp >= {regular_market_start_timestamp} and timestamp <= {regular_market_end_timestamp}
+    and scraped_at = (select scraped_at from candles where timestamp >= {regular_market_start_timestamp} and timestamp <= {regular_market_end_timestamp} order by scraped_at desc limit 1) 
     and symbol = '{symbol}'
     and resolution = '{resolution}'
     ORDER BY timestamp ASC
@@ -64,7 +65,7 @@ pub fn get_candles_by_date_as_continuous_vec(dates: &Vec<String>, candles_date_m
   let mut candles = vec![];
   for date in dates {
     let mut date_candles = candles_date_map.get(date).unwrap().clone();
-    log::info!("{} {}", date, date_candles.len());
+    assert_eq!(date_candles.len(), 390);
     candles.append(&mut date_candles);
   }
   return candles;
