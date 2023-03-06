@@ -7,8 +7,8 @@ pub fn get_candle_snapshots_from_database(
   connection: &Database,
   symbol: &str,
   resolution: &str,
-  regular_market_start_timestamp: i64,
-  regular_market_end_timestamp: i64,
+  start_timestamp: i64,
+  end_timestamp: i64,
 ) -> Vec<CandleSnapshot> {
   let query = format!(
     "
@@ -20,8 +20,8 @@ pub fn get_candle_snapshots_from_database(
       close,
       volume
     from candles 
-    where timestamp >= {regular_market_start_timestamp} and timestamp <= {regular_market_end_timestamp}
-    and scraped_at = (select scraped_at from candles where timestamp >= {regular_market_start_timestamp} and timestamp <= {regular_market_end_timestamp} order by scraped_at desc limit 1) 
+    where timestamp >= {start_timestamp} and timestamp <= {end_timestamp}
+    and scraped_at = (select scraped_at from candles where timestamp >= {start_timestamp} and timestamp <= {end_timestamp} order by scraped_at desc limit 1) 
     and symbol = '{symbol}'
     and resolution = '{resolution}'
     ORDER BY timestamp ASC
@@ -37,7 +37,7 @@ pub fn get_live_candle_snapshots_from_database(
   symbol: &str,
   resolution: &str,
   eastern_now_timestamp: i64,
-  regular_market_start_timestamp: i64,
+  start_timestamp: i64,
   candle_lookup_max_timestamp: i64,
 ) -> Vec<CandleSnapshot> {
   let query = format!(
@@ -50,8 +50,8 @@ pub fn get_live_candle_snapshots_from_database(
       close,
       volume
     from candles 
-    where timestamp >= {regular_market_start_timestamp} and timestamp <= {candle_lookup_max_timestamp}
-    and scraped_at = (select scraped_at from candles where scraped_at >= {regular_market_start_timestamp} and scraped_at <= {eastern_now_timestamp} order by scraped_at desc limit 1) 
+    where timestamp >= {start_timestamp} and timestamp <= {candle_lookup_max_timestamp}
+    and scraped_at = (select scraped_at from candles where scraped_at >= {start_timestamp} and scraped_at <= {eastern_now_timestamp} order by scraped_at desc limit 1) 
     and symbol = '{symbol}'
     and resolution = '{resolution}'
     ORDER BY timestamp ASC

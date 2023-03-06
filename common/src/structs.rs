@@ -156,29 +156,19 @@ pub struct Trade {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct TradeGenerationContext {
-  pub sma_periods: usize,
-  pub warmup_periods: usize,
-  pub oversold_z_distance: f64,
-  pub overbought_z_distance: f64
+  pub fast_sma_periods: usize,
+  pub slow_sma_periods: usize,
+  pub warmup_periods: usize
 }
-
 
 impl Default for TradeGenerationContext {
   fn default() -> Self {
     Self {
-      sma_periods: 10,
-      warmup_periods: 10,
-      oversold_z_distance: -2.5,
-      overbought_z_distance: 2.5
+      fast_sma_periods: 50,
+      slow_sma_periods: 200,
+      warmup_periods: 0
     }
   }
-}
-
-#[derive(Clone)]
-pub struct VwapContext {
-  pub vwap: f64,
-  pub upper_band: f64,
-  pub lower_band: f64,
 }
 
 #[derive(Debug, Serialize, Clone)]
