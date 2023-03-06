@@ -31,7 +31,10 @@ pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
     2022-11-25 - day after thanksgiving (closes at 1pm)
     2022-12-26 - day after christmas
     */
-    let is_holiday = formatted_timestamp == "2022-11-25 00:00:00" || formatted_timestamp == "2023-01-02 00:00:00" || formatted_timestamp == "2023-01-16 00:00:00";
+    let is_holiday = formatted_timestamp == "2022-11-25 00:00:00" || 
+      formatted_timestamp == "2023-01-02 00:00:00" || 
+      formatted_timestamp == "2023-01-16 00:00:00" ||
+      formatted_timestamp == "2023-02-20 00:00:00";
     if is_holiday == false {
       results.push(formatted_timestamp);
     }

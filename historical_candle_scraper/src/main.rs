@@ -24,7 +24,9 @@ fn main() {
     // loop dates
     for date in &dates {
       // formate date
-      let (from, to) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
+      // TODO: regular vs extended?
+      //let (from, to) = common::market_session::get_regular_market_session_start_and_end_from_string(date);
+      let (from, to) = common::market_session::get_extended_market_session_start_and_end_from_string(date);
       // get candles
       let result = providers::get_candles_by_provider_name(provider_name, symbol, resolution, from, to).await;
       if result.is_err() {
@@ -32,7 +34,7 @@ fn main() {
         continue;
       }
       let candles = result.unwrap();
-      log::info!("got {} candles for {}", candles.len(), date);
+      log::info!("got {} candles for {} -> {}", candles.len(), from, to);
       // insert into database
       for candle in &candles {
         let result = connection.insert(candle);

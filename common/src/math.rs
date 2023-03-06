@@ -27,7 +27,7 @@ pub fn calculate_percentage_change(old_value: f64, new_value: f64) -> f64 {
   if old_value <= new_value {
     return calculate_percentage_increase(old_value, new_value);
   }
-  return calculate_percentage_decrease(old_value, new_value);
+  return calculate_percentage_decrease(old_value, new_value) * -1.0; // TODO: added * -1.0 but didn't test? used to return positive
 }
 
 pub fn calculate_open_price_with_slippage(trade_direction: &Direction, open_price: f64, slippage_percentage: f64) -> f64 {

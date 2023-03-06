@@ -4,6 +4,7 @@ pub mod robinhood;
 pub mod thinkorswim;
 pub mod tradingview;
 pub mod yahoo_finance;
+pub mod alpha_vantage;
 
 use std::str::FromStr;
 
@@ -19,6 +20,7 @@ pub enum Provider {
   Robinhood,
   ThinkOrSwim,
   TradingView,
+  AlphaVantage,
 }
 
 impl FromStr for Provider {
@@ -32,6 +34,7 @@ impl FromStr for Provider {
       "robinhood" => Ok(Provider::Robinhood),
       "thinkorswim" => Ok(Provider::ThinkOrSwim),
       "tradingview" => Ok(Provider::TradingView),
+      "alpha_vantage" => Ok(Provider::AlphaVantage),
       _ => Err(()),
     }
   }
@@ -64,6 +67,14 @@ pub async fn get_candles_by_provider_name(
     }
     "polygon" => {
       let provider = self::polygon::Polygon::new();
+      let result = provider.get_candles(symbol, resolution, from, to).await;
+      if result.is_err() {
+        return Err(format!("{:?}", result));
+      }
+      return Ok(result.unwrap());
+    }
+    "alpha_vantage" => {
+      let provider = self::alpha_vantage::AlphaVantage::new();
       let result = provider.get_candles(symbol, resolution, from, to).await;
       if result.is_err() {
         return Err(format!("{:?}", result));

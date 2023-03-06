@@ -6,15 +6,6 @@ use ta::{Next};
 
 use crate::{market_session, structs::*, dates};
 
-fn pine_sma(values: &Vec<f64>, periods: usize) -> Vec<f64> {
-  let mut indicator = ta::indicators::SimpleMovingAverage::new(periods).unwrap();
-  let mut results = vec![];
-  for value in values {
-    results.push(indicator.next(*value));
-  }
-  return results;
-}
-
 fn calculate_vwap_zscore_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
   // mean = sum(volume*close,pds)/sum(volume,pds)
   let periods = trade_generation_context.sma_periods;
@@ -43,7 +34,16 @@ fn calculate_vwap_zscore_direction(trade_generation_context: &TradeGenerationCon
   return Direction::Flat;
 }
 
-/*fn calculate_fair_value_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
+/*
+fn pine_sma(values: &Vec<f64>, periods: usize) -> Vec<f64> {
+  let mut indicator = ta::indicators::SimpleMovingAverage::new(periods).unwrap();
+  let mut results = vec![];
+  for value in values {
+    results.push(indicator.next(*value));
+  }
+  return results;
+}
+fn calculate_fair_value_direction(trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Direction {
   let sma_periods = trade_generation_context.sma_periods;
   let median_up_deviation = trade_generation_context.median_up_deviation;
   let median_down_deviation = trade_generation_context.median_down_deviation;
@@ -69,7 +69,8 @@ fn calculate_vwap_zscore_direction(trade_generation_context: &TradeGenerationCon
     return Direction::Long;
   }
   return Direction::Flat;
-}*/
+}
+*/
 
 fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<DirectionSnapshot>) -> Vec<Trade> {
   let mut buckets: Vec<Vec<DirectionSnapshot>> = Vec::new();

@@ -6,3 +6,4 @@ target
 *.svg
 cache/
 output/
+data/

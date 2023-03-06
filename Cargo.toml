@@ -65,3 +65,5 @@ regex = { version = "1.7" }
 anyhow = "1.0.68"
 # options greeks
 black_scholes = "0.10.0"
+# csv
+csv = "1.2.1"
