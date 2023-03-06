@@ -1,12 +1,12 @@
 [package]
-name = "combination_backtester"
+name = "scraper"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 # logging
-log = { workspace = true }
 simple_logger = { workspace = true }
+log = { workspace = true }
 # runtime
 tokio = { workspace = true }
 # json
@@ -15,15 +15,13 @@ serde_json = { workspace = true }
 # time
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
-# database
-rusqlite = { workspace = true }
-# technical analysis
-ta = { workspace = true }
+# yahoo finance
+yahoo_finance_api = { workspace = true }
 # common
 common = { path = "../common" }
-# decimal
-rust_decimal = { workspace = true }
-rust_decimal_macros = { workspace = true }
-ordered-float = { workspace = true }
-# paralell iteration
-rayon = { workspace = true }
+# providers
+providers = { path = "../providers" }
+# database
+rusqlite = { workspace = true }
+# env vars
+dotenv = { workspace = true }

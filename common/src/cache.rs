@@ -5,7 +5,8 @@ use crate::{candles, database::*, market_session, structs::*};
 pub fn build_candles_date_map(connection: &Database, symbol: &str, resolution: &str, dates: &Vec<String>) -> HashMap<String, Vec<Candle>> {
   let mut candles_date_map = HashMap::new();
   for date in dates {
-    let (start, end) = market_session::get_regular_market_session_start_and_end_from_string(date);
+    //let (start, end) = market_session::get_regular_market_session_start_and_end_from_string(date);
+    let (start, end) = market_session::get_extended_market_session_start_and_end_from_string(date);
     let start_timestamp = start.timestamp();
     let end_timestamp = end.timestamp();
     // get candles from database

@@ -113,7 +113,9 @@ pub fn generate_dates_trades_map(
   let mut dates_trades_map = HashMap::new();
   for date in dates {
     let date_candles = candles_date_map.get(date).unwrap();
-    let (start, end) = market_session::get_regular_market_session_start_and_end_from_string(date);
+    // TODO: regular or extended?
+    let (start, end) = market_session::get_extended_market_session_start_and_end_from_string(date);
+    //let (start, end) = market_session::get_regular_market_session_start_and_end_from_string(date);
     let direction_snapshots = generate_direction_snapshots(&trade_generation_context, start, end, date_candles);
     if direction_snapshots.is_empty() {
       //log::warn!("date = {} direction_snapshots.is_empty()", date);
@@ -130,7 +132,9 @@ pub fn generate_dates_trades_map(
 pub fn generate_continuous_trades(dates: &Vec<String>, trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Vec<Trade> {
   let mut direction_snapshots = vec![];
   for date in dates {
-    let (start, end) = market_session::get_regular_market_session_start_and_end_from_string(date);
+    // TODO: regular or extended?
+    //let (start, end) = market_session::get_regular_market_session_start_and_end_from_string(date);
+    let (start, end) = market_session::get_extended_market_session_start_and_end_from_string(date);
     let mut date_direction_snapshots = generate_direction_snapshots(&trade_generation_context, start, end, &candles);
     direction_snapshots.append(&mut date_direction_snapshots);
   }

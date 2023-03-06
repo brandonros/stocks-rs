@@ -4,8 +4,8 @@ members = [
   "common",
   "providers",
   # binaries
-  "combination_backtester",
-  "historical_candle_scraper"
+  "backtester",
+  "scraper"
 ]
 
 [workspace.dependencies]
