@@ -30,6 +30,6 @@ cargo run --release --bin combination_backtester polygon SPY 1 2023-02-13 2023-0
 cargo run --release --bin combination_backtester polygon SPY 1 2023-01-01 2023-02-10 # ytd
 cargo run --release --bin combination_backtester polygon SPY 1 2022-01-01 2023-02-10 # one year-ish
 
-cargo run --bin historical_candle_scraper alpha_vantage 2023-01-01 2023-03-05
-cargo run --release --bin combination_backtester alpha_vantage SPY 1 2023-02-13 2023-02-13
+cargo run --bin historical_candle_scraper alpha_vantage 2023-01-01 2023-03-03
+cargo run --release --bin combination_backtester alpha_vantage SPY 1 2023-01-01 2023-03-03
 ```
