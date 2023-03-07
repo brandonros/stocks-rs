@@ -193,5 +193,6 @@ pub struct CombinationBacktestResult {
   pub trade_generation_context: TradeGenerationContext,
   pub backtest_context: BacktestContext,
   pub num_trades: usize,
+  pub simple_profit_loss_percentage: f64,
   pub compounded_profit_loss_percentage: f64
 }
