@@ -3,7 +3,7 @@ use chrono_tz::Tz;
 use ta::{indicators::SimpleMovingAverage, Next};
 use crate::{structs::*, market_session::{self, MarketSessionType}};
 
-pub fn calculate_direction_snapshot(start: DateTime<Tz>, end: DateTime<Tz>, pointer: DateTime<Tz>, reduced_candles: &[Candle], trade_generation_context: &TradeGenerationContext) -> Direction {
+pub fn calculate_direction_snapshot(_start: DateTime<Tz>, end: DateTime<Tz>, pointer: DateTime<Tz>, reduced_candles: &[Candle], trade_generation_context: &TradeGenerationContext) -> Direction {
   // TODO: not enough candles yet?
   if reduced_candles.len() == 0 {
     return Direction::Flat;
