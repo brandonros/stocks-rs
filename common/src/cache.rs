@@ -29,7 +29,11 @@ pub fn build_candles_date_map(connection: &Database, symbol: &str, resolution: &
     for candle in candles {
       date_candles.push(candle.clone());
     }
-    assert_eq!(date_candles.len(), 390);
+    // TODO: assert of if not enough candles?
+    let num_date_candles = date_candles.len();
+    if num_date_candles < 500 {
+      log::warn!("not enough candles? date = {date} num_date_candles = {num_date_candles}");
+    }
     candles_date_map.insert(date.clone(), date_candles);
   }
   return candles_date_map;

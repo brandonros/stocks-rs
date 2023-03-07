@@ -20,7 +20,7 @@ use rust_decimal::prelude::ToPrimitive;
 use rust_decimal_macros::dec;
 
 fn generate_backtest_context_combinations() -> Vec<BacktestContext> {
-  let mut combinations = vec![];
+  /*let mut combinations = vec![];
   let min = dec!(0.001);
   let max = dec!(0.01);
   let step = dec!(0.0005);
@@ -39,7 +39,10 @@ fn generate_backtest_context_combinations() -> Vec<BacktestContext> {
       combinations.push(backtest_context);
     }
   }
-  return combinations;
+  return combinations;*/
+  return vec![
+    BacktestContext::default()
+  ];
 }
 
 fn generate_trade_generation_context_combinations() -> Vec<TradeGenerationContext> {
@@ -102,19 +105,19 @@ fn main() {
   let combination_results: Vec<CombinationBacktestResult> = vec![];
   let combination_results = Arc::new(Mutex::new(combination_results));
   let candles = candles::get_candles_by_date_as_continuous_vec(&dates, &candles_date_map);
-  let candles = candles::convert_timeframe(&candles, 1, 5);
-  log::info!("{} {}", dates.len(), candles.len());
+  let candles = candles::convert_timeframe(&candles, 1, 5); // TODO: 5 minute timeframe?
+  log::info!("num_dates = {} num_candles = {}", dates.len(), candles.len());
   trade_generation_context_combinations.par_iter().for_each(|trade_generation_context| {
     // build list of trades
     let trades = trading::generate_continuous_trades(&dates, &trade_generation_context, &candles);
     // backtest trades
     backtest_context_combinations.par_iter().for_each(|backtest_context| {
       let trade_results = backtesting::generate_trades_results(backtest_context, &trades, &candles);
-      // summarize trade results
+      // score trade results
       let (num_trades, compounded_profit_loss_percentage) = calculate_trade_result_performance(&trade_results);
-      if compounded_profit_loss_percentage >= 0.10 {
-        log::info!("trade_generation_context = {:?} backtest_context = {:?} {:.2}", trade_generation_context, backtest_context, compounded_profit_loss_percentage);
-      }
+      // log
+      log::trace!("trade_generation_context = {:?} backtest_context = {:?} {:.2}", trade_generation_context, backtest_context, compounded_profit_loss_percentage);
+      // push
       let mut combination_results = combination_results.lock().unwrap();
       combination_results.push(CombinationBacktestResult {
         trade_generation_context: trade_generation_context.clone(),
@@ -126,19 +129,7 @@ fn main() {
     });
   });
   let mut combination_results = combination_results.lock().unwrap();
-  /*let min_num_trades = combination_results.iter().map(|combination_result| combination_result.num_trades).min().unwrap();
-  let max_num_trades = combination_results.iter().map(|combination_result| combination_result.num_trades).max().unwrap();
-  let min_compounded_profit_loss_percentage = combination_results.iter().map(|combination_result| OrderedFloat(combination_result.compounded_profit_loss_percentage)).min().unwrap().into_inner();
-  let max_compounded_profit_loss_percentage = combination_results.iter().map(|combination_result| OrderedFloat(combination_result.compounded_profit_loss_percentage)).max().unwrap().into_inner();*/
   combination_results.sort_by(|a, b| {
-    /*let a_num_trades = math::normalize(a.num_trades as f64, min_num_trades as f64, max_num_trades as f64);
-    let b_num_trades = math::normalize(b.num_trades as f64, min_num_trades as f64, max_num_trades as f64);
-    let a_compounded_profit_loss_percentage = math::normalize(a.compounded_profit_loss_percentage, min_compounded_profit_loss_percentage, max_compounded_profit_loss_percentage);
-    let b_compounded_profit_loss_percentage = math::normalize(b.compounded_profit_loss_percentage, min_compounded_profit_loss_percentage, max_compounded_profit_loss_percentage);
-    let num_trades_weight = 0.10;
-    let compounded_profit_loss_percentage_weight = 0.90;
-    let a_score = num_trades_weight * (1.0 - a_num_trades) + compounded_profit_loss_percentage_weight * (a_compounded_profit_loss_percentage);
-    let b_score = num_trades_weight * (1.0 - b_num_trades) + compounded_profit_loss_percentage_weight * (b_compounded_profit_loss_percentage);*/
     let a_score = a.compounded_profit_loss_percentage;
     let b_score = b.compounded_profit_loss_percentage;
     return b_score.partial_cmp(&a_score).unwrap();

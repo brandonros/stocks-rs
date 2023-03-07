@@ -321,6 +321,7 @@ dependencies = [
  "serde_json",
  "ta",
  "tokio",
+ "yata",
 ]
 
 [[package]]
@@ -2269,4 +2270,13 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "yata"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb00aaff0419cec399fc84ae1d7209b4121612686d00a094d660e895667af283"
+dependencies = [
+ "serde",
 ]

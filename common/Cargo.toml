@@ -27,3 +27,4 @@ ordered-float = { workspace = true }
 anyhow = { workspace = true }
 # technical analysis
 ta = { workspace = true }
+yata = { workspace = true }

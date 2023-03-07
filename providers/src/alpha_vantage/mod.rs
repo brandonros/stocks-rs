@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 /*
 #!/bin/bash
-curl "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol=SPY&interval=1min&slice=year1month1&apikey=KLRE95OO3G0LUEZU" -o year1month1.csv
+curl "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol=SPY&interval=1min&slice=year1month1&apikey=$ALPHA_VANTAGE_API_KEY" -o year1month1.csv
 sleep 15
 curl "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol=SPY&interval=1min&slice=year1month2&apikey=$ALPHA_VANTAGE_API_KEY" -o year1month2.csv
 sleep 15

@@ -66,7 +66,10 @@ pub fn get_candles_by_date_as_continuous_vec(dates: &Vec<String>, candles_date_m
   let mut candles = vec![];
   for date in dates {
     let mut date_candles = candles_date_map.get(date).unwrap().clone();
-    assert_eq!(date_candles.len(), 390);
+    let num_date_candles = date_candles.len();
+    if num_date_candles < 500 {
+      log::warn!("not enough candles? date = {date} num_date_candles = {num_date_candles}")
+    }
     candles.append(&mut date_candles);
   }
   return candles;
@@ -76,6 +79,10 @@ pub fn convert_timeframe(candles: &Vec<Candle>, source_timeframe: usize, target_
   assert!(source_timeframe == 1);
   let chunks: Vec<&[Candle]> = candles.chunks(target_timeframe).collect();
   return chunks.into_iter().map(|chunk| {
+    // check length
+    if chunk.len() < target_timeframe {
+      panic!("not enough candles {:?}", chunk);
+    }
     let timestamp = chunk[0].timestamp;
     let open = chunk[0].open;
     let low = chunk.iter().map(|candle| OrderedFloat(candle.low)).min().unwrap().into_inner();

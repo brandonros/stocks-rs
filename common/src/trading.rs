@@ -100,33 +100,13 @@ fn generate_direction_snapshots(
       timestamp: pointer.timestamp(),
       direction,
     });
+    // log
+    let most_recent_candle = &reduced_candles[reduced_candles.len() - 1];
+    log::trace!("{},{:?},{},{},{},{},{}", pointer.timestamp(), direction, most_recent_candle.open, most_recent_candle.high, most_recent_candle.low, most_recent_candle.close, most_recent_candle.volume);
+    // increment
     pointer += chrono::Duration::minutes(1);
   }
   return direction_snapshots;
-}
-
-pub fn generate_dates_trades_map(
-  dates: &Vec<String>,
-  trade_generation_context: &TradeGenerationContext,
-  candles_date_map: &HashMap<String, Vec<Candle>>,
-) -> HashMap<String, Vec<Trade>> {
-  let mut dates_trades_map = HashMap::new();
-  for date in dates {
-    let date_candles = candles_date_map.get(date).unwrap();
-    // TODO: regular or extended?
-    let (start, end) = market_session::get_extended_market_session_start_and_end_from_string(date);
-    //let (start, end) = market_session::get_regular_market_session_start_and_end_from_string(date);
-    let direction_snapshots = generate_direction_snapshots(&trade_generation_context, start, end, date_candles);
-    if direction_snapshots.is_empty() {
-      //log::warn!("date = {} direction_snapshots.is_empty()", date);
-      dates_trades_map.insert(date.clone(), vec![]);
-      continue;
-    }
-    let date_trades = calculate_trades_from_direction_snapshots(&direction_snapshots);
-    //log::info!("date = {} num_trades = {}", date, date_trades.len());
-    dates_trades_map.insert(date.clone(), date_trades);
-  }
-  return dates_trades_map;
 }
 
 pub fn generate_continuous_trades(dates: &Vec<String>, trade_generation_context: &TradeGenerationContext, candles: &Vec<Candle>) -> Vec<Trade> {

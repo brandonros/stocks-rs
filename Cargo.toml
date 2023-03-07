@@ -33,6 +33,7 @@ providers = { path = "../providers" }
 rusqlite = { git = "https://github.com/rusqlite/rusqlite.git", features = ["bundled", "serde_json"] }
 # technical analysis
 ta = { git = "https://github.com/brandonros/ta-rs", rev = "366c310b3a518fd990f1972dc1ebed606b9b57a6" }
+yata = "0.6.1"
 # decimal
 rust_decimal = "1.28.0"
 rust_decimal_macros = "1.28.0"
