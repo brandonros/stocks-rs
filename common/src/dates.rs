@@ -1,7 +1,7 @@
 use chrono::{DateTime, Datelike, Days, NaiveDateTime, TimeZone, Weekday};
 use chrono_tz::{Tz, US::Eastern};
 
-pub fn build_list_of_dates(from: &str, to: &str) -> Vec<String> {
+pub fn build_list_of_trading_dates(from: &str, to: &str) -> Vec<String> {
   let parsed_from = NaiveDateTime::parse_from_str(from, "%Y-%m-%d %H:%M:%S").unwrap();
   let parsed_to = NaiveDateTime::parse_from_str(to, "%Y-%m-%d %H:%M:%S").unwrap();
   let from = Eastern.from_local_datetime(&parsed_from).unwrap();

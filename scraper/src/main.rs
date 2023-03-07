@@ -20,7 +20,10 @@ fn main() {
     // init database tables
     connection.migrate("./schema/");
     // get dates
-    let dates = common::dates::build_list_of_dates(&start_date, &end_date);
+    let dates = common::dates::build_list_of_trading_dates(&start_date, &end_date);
+    if dates.len() == 0 {
+      panic!("no trading dates");
+    }
     // loop dates
     for date in &dates {
       // formate date

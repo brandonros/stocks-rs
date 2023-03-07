@@ -81,13 +81,13 @@ pub fn convert_timeframe(candles: &Vec<Candle>, source_timeframe: usize, target_
   return chunks.into_iter().map(|chunk| {
     // check length
     if chunk.len() < target_timeframe {
-      panic!("not enough candles {:?}", chunk);
+      log::warn!("not enough candles {:?}", chunk);
     }
     let timestamp = chunk[0].timestamp;
     let open = chunk[0].open;
     let low = chunk.iter().map(|candle| OrderedFloat(candle.low)).min().unwrap().into_inner();
     let high = chunk.iter().map(|candle| OrderedFloat(candle.high)).max().unwrap().into_inner();
-    let close = chunk[target_timeframe - 1].close;
+    let close = chunk[chunk.len() - 1].close; // TODO: used to be target_timeframe - 1 but weird alphavantage data missing?
     let volume = chunk.iter().fold(0, |prev, candle| prev + candle.volume);
     return Candle {
       timestamp,

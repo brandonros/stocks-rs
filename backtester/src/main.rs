@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -15,7 +14,6 @@ use common::trading;
 use common::utilities;
 use rayon::prelude::IntoParallelRefIterator;
 use rayon::prelude::ParallelIterator;
-use ordered_float::OrderedFloat;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal_macros::dec;
 
@@ -46,10 +44,44 @@ fn generate_backtest_context_combinations() -> Vec<BacktestContext> {
 }
 
 fn generate_trade_generation_context_combinations() -> Vec<TradeGenerationContext> {
-  // TODO
+  /*let mut combinations = vec![];
+  let min = 10;
+  let max = 50;
+  let step = 5;
+  let slow_periods = utilities::build_usize_range(min, max, step);
+  let min = 5;
+  let max = 20;
+  let step = 5;
+  let fast_periods = utilities::build_usize_range(min, max, step);
+  for slow_periods in &slow_periods {
+    for fast_periods in &fast_periods {
+      // skip where fast is greater than or equal to slow?
+      if fast_periods >= slow_periods {
+        continue;
+      }
+      // skip fast + slow being too close?
+      let difference = slow_periods - fast_periods;
+      if difference < 5 {
+        continue;
+      }
+      let backtest_context = TradeGenerationContext {
+        warmup_periods: 1,
+        fast_periods: *fast_periods,
+        slow_periods: *slow_periods
+      };
+      combinations.push(backtest_context);
+    }
+  }
+  return combinations;*/
   return vec![
-    TradeGenerationContext::default()
+    TradeGenerationContext { fast_periods: 10, slow_periods: 15, warmup_periods: 1 },
+    TradeGenerationContext { fast_periods: 15, slow_periods: 20, warmup_periods: 1 },
+    TradeGenerationContext { fast_periods: 20, slow_periods: 25, warmup_periods: 1 },
+    TradeGenerationContext { fast_periods: 25, slow_periods: 30, warmup_periods: 1 },
   ];
+  /*return vec![
+    TradeGenerationContext::default()
+  ];*/
 }
 
 fn calculate_trade_result_performance(trade_results: &Vec<TradeBacktestResult>) -> (usize, f64) {
@@ -78,21 +110,33 @@ fn print_progress(num_tested: usize, num_total: usize, start: Instant) {
 }
 
 fn main() {
+  // init logging
   simple_logger::init_with_level(log::Level::Info).unwrap();
-  // config
+  // parameters
   let args: Vec<String> = std::env::args().collect();
   let provider_name = args.get(1).unwrap();
   let symbol = args.get(2).unwrap();
   let resolution = args.get(3).unwrap();
   let dates_start = format!("{} 00:00:00", args.get(4).unwrap());
   let dates_end = format!("{} 15:59:59", args.get(5).unwrap());
-  let dates = common::dates::build_list_of_dates(&dates_start, &dates_end);
+  // build dates
+  let dates = common::dates::build_list_of_trading_dates(&dates_start, &dates_end);
+  if dates.len() == 0 {
+    panic!("no trading dates");
+  }
   // open database + init database tables
   let database_filename = format!("./database-{}.db", provider_name);
   let connection = database::Database::new(&database_filename);
   connection.migrate("./schema/");
   // build candles cache map
   let candles_date_map = cache::build_candles_date_map(&connection, symbol, resolution, &dates);
+  let candles = candles::get_candles_by_date_as_continuous_vec(&dates, &candles_date_map);
+  // move from 1 minute resolution to 5?
+  let candles = candles::convert_timeframe(&candles, 1, 5);
+  log::info!("num_dates = {} num_candles = {}", dates.len(), candles.len());
+  if candles.len() == 0 {
+    panic!("no candles?");
+  }
   // build list of combinations
   let trade_generation_context_combinations = generate_trade_generation_context_combinations();
   let backtest_context_combinations = generate_backtest_context_combinations();
@@ -104,9 +148,6 @@ fn main() {
   let start = std::time::Instant::now();
   let combination_results: Vec<CombinationBacktestResult> = vec![];
   let combination_results = Arc::new(Mutex::new(combination_results));
-  let candles = candles::get_candles_by_date_as_continuous_vec(&dates, &candles_date_map);
-  let candles = candles::convert_timeframe(&candles, 1, 5); // TODO: 5 minute timeframe?
-  log::info!("num_dates = {} num_candles = {}", dates.len(), candles.len());
   trade_generation_context_combinations.par_iter().for_each(|trade_generation_context| {
     // build list of trades
     let trades = trading::generate_continuous_trades(&dates, &trade_generation_context, &candles);
@@ -128,22 +169,25 @@ fn main() {
       print_progress(combination_results.len(), num_combinations, start);
     });
   });
+  // sort
   let mut combination_results = combination_results.lock().unwrap();
   combination_results.sort_by(|a, b| {
     let a_score = a.compounded_profit_loss_percentage;
     let b_score = b.compounded_profit_loss_percentage;
     return b_score.partial_cmp(&a_score).unwrap();
   });
+  // get best
   let best_combination_result = &combination_results[0];
-  log::info!("best_combination_result = {}", serde_json::to_string(&best_combination_result).unwrap());
-  // flush trades to file?
   let trades = trading::generate_continuous_trades(&dates, &best_combination_result.trade_generation_context, &candles);
-  let stringified_value = serde_json::to_string_pretty(&trades).unwrap();
-  let mut file = std::fs::File::create(format!("/tmp/trades.json")).unwrap();
-  file.write_all(stringified_value.as_bytes()).unwrap();
-  // flush backtest results to file
   let trade_results = backtesting::generate_trades_results(&best_combination_result.backtest_context, &trades, &candles);
-  let stringified_value = serde_json::to_string_pretty(&trade_results).unwrap();
-  let mut file = std::fs::File::create(format!("/tmp/trade-results.json")).unwrap();
+  let value = serde_json::json!({
+    "best_combination_result": best_combination_result,
+    "trades": trades,
+    "trade_results": trade_results,
+    "dates_start": dates_start,
+    "dates_end": dates_end
+  });
+  let stringified_value = serde_json::to_string_pretty(&value).unwrap();
+  let mut file = std::fs::File::create(format!("/tmp/{dates_start}-{dates_end}.json")).unwrap();
   file.write_all(stringified_value.as_bytes()).unwrap();
 }

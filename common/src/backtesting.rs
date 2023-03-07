@@ -115,81 +115,6 @@ fn calculate_trade_result(
   };
 }
 
-/*fn debug_trade_result(trade_result: &TradeResult) {
-  let trade_result_type = if trade_result.profit_loss > 0.0 {
-    String::from("win")
-  } else {
-    String::from("loss")
-  };
-  let mut row = vec![];
-  row.push(format!("{}", dates::format_timestamp(trade_result.start_timestamp)));
-  row.push(format!("{:?}", trade_result.direction));
-  row.push(format!("${:.2}", trade_result.open_price));
-  row.push(format!("{:?}", trade_result.outcome));
-  row.push(format!("{}", dates::format_timestamp(trade_result.exit_timestamp)));
-  row.push(format!("${:.2}", trade_result.exit_price));
-  row.push(format!("${:.2}", trade_result.profit_loss));
-  row.push(format!("{:.4}", trade_result.profit_loss_percentage));
-  row.push(trade_result_type);
-  log::info!("{}", row.join(","));
-}*/
-
-pub fn generate_stacked_trades_results(backtest_context: &BacktestContext, trades: &Vec<Trade>, candles: &Vec<Candle>) -> Vec<TradeBacktestResult> {
-  let mut trade_results: Vec<TradeBacktestResult> = vec![];
-  for trade in trades {
-    // skip flat signals
-    if trade.direction == Direction::Flat {
-      continue;
-    }
-    // get candles in range
-    let trade_candles: Vec<Candle> = candles
-      .iter()
-      .filter(|candle| {
-        return candle.timestamp >= trade.start_timestamp && candle.timestamp <= trade.end_timestamp;
-      })
-      .cloned()
-      .collect();
-    // get open price
-    let open_candle = &trade_candles[0];
-    let slippage_percentage = backtest_context.slippage_percentage;
-    let open_price = math::calculate_open_price_with_slippage(&trade.direction, open_candle.open, slippage_percentage);
-    // get trade result
-    let trade_result = calculate_trade_result(&backtest_context, &trade_candles, &trade.direction, open_candle.timestamp, open_price);
-    // can't stack if direction changed
-    if trade_result.outcome == Outcome::DirectionChange {
-      trade_results.push(trade_result);
-      continue;
-    }
-    // can't stack if at end of time window for direction
-    let trade_exit_timestamp = trade_result.exit_timestamp;
-    let time_left = trade.end_timestamp - trade_exit_timestamp;
-    if time_left == 0 {
-      trade_results.push(trade_result);
-      continue;
-    }
-    // push result due to weird clone workaround
-    trade_results.push(trade_result);
-    // skip 1 minute and keep stacking
-    let mut pointer = trade_exit_timestamp + 60;
-    while pointer <= trade.end_timestamp {
-      let trade_candles: Vec<Candle> = candles
-        .iter()
-        .filter(|candle| {
-          return candle.timestamp >= pointer && candle.timestamp <= trade.end_timestamp;
-        })
-        .cloned()
-        .collect();
-      let open_candle = &trade_candles[0];
-      let slippage_percentage = backtest_context.slippage_percentage;
-      let open_price = math::calculate_open_price_with_slippage(&trade.direction, open_candle.open, slippage_percentage);
-      let trade_result = calculate_trade_result(&backtest_context, &trade_candles, &trade.direction, open_candle.timestamp, open_price);
-      pointer = trade_result.exit_timestamp + 60;
-      trade_results.push(trade_result);
-    }
-  }
-  return trade_results;
-}
-
 pub fn generate_trades_results(backtest_context: &BacktestContext, trades: &Vec<Trade>, candles: &Vec<Candle>) -> Vec<TradeBacktestResult> {
   let mut trade_results: Vec<TradeBacktestResult> = vec![];
   for trade in trades {
@@ -205,6 +130,11 @@ pub fn generate_trades_results(backtest_context: &BacktestContext, trades: &Vec<
       })
       .cloned()
       .collect();
+    // watch out for empty trades?
+    if trade_candles.len() == 0 {
+      log::warn!("no trade candles? trade = {:?}", trade);
+      continue;
+    }
     // get open price
     let open_candle = &trade_candles[0];
     let slippage_percentage = backtest_context.slippage_percentage;

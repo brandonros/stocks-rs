@@ -156,16 +156,16 @@ pub struct Trade {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct TradeGenerationContext {
-  pub fast_sma_periods: usize,
-  pub slow_sma_periods: usize,
+  pub fast_periods: usize,
+  pub slow_periods: usize,
   pub warmup_periods: usize
 }
 
 impl Default for TradeGenerationContext {
   fn default() -> Self {
     Self {
-      fast_sma_periods: 9,
-      slow_sma_periods: 21,
+      fast_periods: 9,
+      slow_periods: 21,
       warmup_periods: 1
     }
   }
@@ -182,8 +182,8 @@ impl Default for BacktestContext {
   fn default() -> Self {
     Self {
       slippage_percentage: 0.000125,
-      stop_loss_percentage: -0.01,
-      profit_limit_percentage: 0.05
+      stop_loss_percentage: -0.004,
+      profit_limit_percentage: 0.004
     }
   }
 }

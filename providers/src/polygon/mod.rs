@@ -29,7 +29,7 @@ impl Polygon {
     .unwrap();
     request_url.query_pairs_mut().append_pair("adjusted", "true");
     request_url.query_pairs_mut().append_pair("sort", "asc");
-    request_url.query_pairs_mut().append_pair("limit", "500");
+    request_url.query_pairs_mut().append_pair("limit", "1000");
     request_url.query_pairs_mut().append_pair("apiKey", &polygon_api_token);
     let request_url = request_url.as_str().to_string();
     let request_headers = vec![];
@@ -57,6 +57,8 @@ impl Polygon {
         volume,
       });
     }
+    // TODO: too cheap to pay $30/mo so 5 requests per minute?
+    tokio::time::sleep(tokio::time::Duration::from_millis(15000)).await;
     return Ok(candles);
   }
 }

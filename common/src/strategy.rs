@@ -3,7 +3,7 @@ use chrono_tz::Tz;
 use ta::{indicators::SimpleMovingAverage, Next};
 use crate::{structs::*, market_session::{self, MarketSessionType}};
 
-pub fn calculate_direction_snapshot(pointer: DateTime<Tz>, reduced_candles: &[Candle], trade_generation_context: &TradeGenerationContext) -> Direction {
+pub fn calculate_direction_snapshot(start: DateTime<Tz>, end: DateTime<Tz>, pointer: DateTime<Tz>, reduced_candles: &[Candle], trade_generation_context: &TradeGenerationContext) -> Direction {
   // TODO: not enough candles yet?
   if reduced_candles.len() == 0 {
     return Direction::Flat;
@@ -13,17 +13,22 @@ pub fn calculate_direction_snapshot(pointer: DateTime<Tz>, reduced_candles: &[Ca
   if session_type != MarketSessionType::Regular {
     return Direction::Flat;
   }
+  // go flat 1 minute before close
+  let distance_to_close = (end - pointer).num_minutes();
+  if distance_to_close == 0 {
+    return Direction::Flat;
+  }
   // two moving averages + crossabove + crossunder
-  let mut slow_sma = SimpleMovingAverage::new(trade_generation_context.slow_sma_periods).unwrap();
-  let mut fast_sma = SimpleMovingAverage::new(trade_generation_context.fast_sma_periods).unwrap();
-  let mut last_fast_sma = 0.0;
-  let mut last_slow_sma = 0.0;
+  let mut slow = SimpleMovingAverage::new(trade_generation_context.slow_periods).unwrap();
+  let mut fast = SimpleMovingAverage::new(trade_generation_context.fast_periods).unwrap();
+  let mut last_fast = 0.0;
+  let mut last_slow = 0.0;
   for candle in reduced_candles {
     let hlc3 = (candle.high + candle.low + candle.close) / 3.0;
-    last_slow_sma = slow_sma.next(hlc3);
-    last_fast_sma = fast_sma.next(hlc3);
+    last_slow = slow.next(hlc3);
+    last_fast = fast.next(hlc3);
   }
-  if last_fast_sma > last_slow_sma {
+  if last_fast > last_slow {
     return Direction::Long;
   }
   return Direction::Short;

@@ -1,8 +1,5 @@
-use std::{collections::{HashMap}};
-
 use chrono::DateTime;
 use chrono_tz::Tz;
-use ta::{Next};
 
 use crate::{market_session, structs::*, dates, strategy};
 
@@ -22,12 +19,12 @@ fn calculate_trades_from_direction_snapshots(direction_snapshots: &Vec<Direction
       (Direction::Flat, Direction::Flat) => {
         false
       }
-      // stay in (crossover/crossunder once)
+      // stay in or stay out? (crossover/crossunder once)
       (Direction::Long, Direction::Flat) => {
-        false
+        true // TODO: close on long -> flat or stay open?
       }
       (Direction::Short, Direction::Flat) => {
-        false
+        true // TODO: close on Short -> flat or stay open?
       }
       // open new
       (Direction::Flat, Direction::Long) => {
@@ -81,6 +78,7 @@ fn generate_direction_snapshots(
   candles: &Vec<Candle>,
 ) -> Vec<DirectionSnapshot> {
   let mut pointer = start;
+  let pointer_step = 1; // TODO: 1 or 5?
   let mut direction_snapshots: Vec<DirectionSnapshot> = vec![];
   // iterate over every minute of the trading day, making sure we do not include the end of the most recent candle because it would not be known in a live situation
   while pointer <= end {
@@ -91,11 +89,11 @@ fn generate_direction_snapshots(
       .collect();
     // allow warmup
     if reduced_candles.len() < trade_generation_context.warmup_periods {
-      pointer += chrono::Duration::minutes(1);
+      pointer += chrono::Duration::minutes(pointer_step);
       continue;
     }
     // calculate direction
-    let direction = strategy::calculate_direction_snapshot(pointer, &reduced_candles, trade_generation_context);
+    let direction = strategy::calculate_direction_snapshot(start, end, pointer, &reduced_candles, trade_generation_context);
     direction_snapshots.push(DirectionSnapshot {
       timestamp: pointer.timestamp(),
       direction,
@@ -104,7 +102,7 @@ fn generate_direction_snapshots(
     let most_recent_candle = &reduced_candles[reduced_candles.len() - 1];
     log::trace!("{},{:?},{},{},{},{},{}", pointer.timestamp(), direction, most_recent_candle.open, most_recent_candle.high, most_recent_candle.low, most_recent_candle.close, most_recent_candle.volume);
     // increment
-    pointer += chrono::Duration::minutes(1);
+    pointer += chrono::Duration::minutes(pointer_step);
   }
   return direction_snapshots;
 }
