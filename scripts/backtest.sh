@@ -432,6 +432,7 @@ declare -a dates=(
   "2023-03-03"
 )
 # cleanup
+rm output/*.csv
 rm output/*.json
 # build
 cargo build --release

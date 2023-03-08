@@ -32,6 +32,14 @@ pub fn sync_read_json_from_file<T>(filename: &str) -> T
 where
   T: for<'de> serde::Deserialize<'de>,
 {
-  let stringified_value = std::fs::read_to_string(filename).unwrap();
-  return serde_json::from_str(&stringified_value).unwrap();
+  let stringified_value = std::fs::read_to_string(filename);
+  if stringified_value.is_err() {
+    panic!("error reading {filename}");
+  }
+  let stringified_value = stringified_value.unwrap();
+  let parsed_value = serde_json::from_str(&stringified_value);
+  if parsed_value.is_err() {
+    panic!("error parsing {filename}");
+  }
+  return parsed_value.unwrap();
 }

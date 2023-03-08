@@ -33,12 +33,14 @@ pub fn build_list_of_trading_dates(from: &str, to: &str) -> Vec<String> {
     */
     let is_holiday = formatted_timestamp == "2022-01-17 00:00:00" || 
       formatted_timestamp == "2022-02-21 00:00:00" || 
+      formatted_timestamp == "2022-04-15 00:00:00" || 
       formatted_timestamp == "2022-05-30 00:00:00" || 
       formatted_timestamp == "2022-06-20 00:00:00" || 
       formatted_timestamp == "2022-07-04 00:00:00" || 
       formatted_timestamp == "2022-09-05 00:00:00" || 
       formatted_timestamp == "2022-11-24 00:00:00" || 
-      formatted_timestamp == "2022-11-25 00:00:00" || 
+      formatted_timestamp == "2022-11-25 00:00:00" || // early close?
+      formatted_timestamp == "2022-12-26 00:00:00" ||
       formatted_timestamp == "2023-01-02 00:00:00" || 
       formatted_timestamp == "2023-01-16 00:00:00" ||
       formatted_timestamp == "2023-02-20 00:00:00";
