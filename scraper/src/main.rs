@@ -15,10 +15,6 @@ fn main() {
     // config
     let symbol = "SPY"; // TODO: do not hardcode?
     let resolution = "1"; // TODO: do not hardcode?
-    // open database
-    let connection = common::database::Database::new(&format!("./database-{}.db", provider_name));
-    // init database tables
-    connection.migrate("./schema/");
     // get dates
     let dates = common::dates::build_list_of_trading_dates(&start_date, &end_date);
     if dates.len() == 0 {
@@ -38,13 +34,7 @@ fn main() {
       }
       let candles = result.unwrap();
       log::info!("got {} candles for {} -> {}", candles.len(), from, to);
-      // insert into database
-      for candle in &candles {
-        let result = connection.insert(candle);
-        if result.is_err() {
-          panic!("TODO");
-        }
-      }
+      // TODO: got rid of sqlite, write to file?
     }
   });
 }

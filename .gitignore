@@ -7,3 +7,4 @@ target
 cache/
 output/
 data/
+node_modules/

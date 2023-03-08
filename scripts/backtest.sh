@@ -432,15 +432,13 @@ declare -a dates=(
   "2023-03-03"
 )
 # cleanup
-rm /Users/brandonros/Desktop/backtest-results/*.json
+rm output/*.json
 # build
 cargo build --release
 # backtest
 for date in "${dates[@]}"
 do
   ./target/release/backtester polygon SPY 1 "$date" "$date"
-  mv "/Users/brandonros/Desktop/backtest-results/$date 00:00:00-$date 15:59:59.json" "/Users/brandonros/Desktop/backtest-results/backtest-result-$date.json"
+  mv "output/$date 00:00:00-$date 15:59:59.json" "output/backtest-result-$date.json"
 done
 # aggregate
-cd /Users/brandonros/Desktop/backtest-results/
-node aggregate.js > output.csv

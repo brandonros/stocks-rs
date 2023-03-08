@@ -13,9 +13,9 @@ pub fn calculate_direction_snapshot(_start: DateTime<Tz>, end: DateTime<Tz>, poi
   if session_type != MarketSessionType::Regular {
     return Direction::Flat;
   }
-  // go flat 1 minute before close
-  let distance_to_close = (end - pointer).num_minutes();
-  if distance_to_close == 0 {
+  // go flat 5 minutes (1 candle) before close?
+  let distance_to_close = (end - pointer).num_seconds();
+  if distance_to_close <= 300 - 1 { // end is 15:59:59 and not 16:00:00
     return Direction::Flat;
   }
   // two moving averages + crossabove + crossunder

@@ -20,18 +20,25 @@ pub fn build_list_of_trading_dates(from: &str, to: &str) -> Vec<String> {
     // TODO: holidays?
     /*
     ? - new year's day
-    2022-01-16 - martin luther king jr day
-    2022-02-21 - preisdent's day
+    2022-01-16 - martin luther king jr day (2022-01-17)
+    2022-02-21 - preisdent's day (2022-02-21)
     2022-04-15 - good friday
-    2022-05-30 - memorial day
-    2022-06-20 - juneteenth
-    2022-07-04 - independence day
-    2022-09-05 - labor day
-    2022-11-24 - day before thanksgiving
+    2022-05-30 - memorial day (2022-05-30)
+    2022-06-20 - juneteenth (2022-06-20)
+    2022-07-04 - independence day (2022-07-04)
+    2022-09-05 - labor day (2022-09-05)
+    2022-11-24 - day before thanksgiving (2022-11-24)
     2022-11-25 - day after thanksgiving (closes at 1pm)
     2022-12-26 - day after christmas
     */
-    let is_holiday = formatted_timestamp == "2022-11-25 00:00:00" || 
+    let is_holiday = formatted_timestamp == "2022-01-17 00:00:00" || 
+      formatted_timestamp == "2022-02-21 00:00:00" || 
+      formatted_timestamp == "2022-05-30 00:00:00" || 
+      formatted_timestamp == "2022-06-20 00:00:00" || 
+      formatted_timestamp == "2022-07-04 00:00:00" || 
+      formatted_timestamp == "2022-09-05 00:00:00" || 
+      formatted_timestamp == "2022-11-24 00:00:00" || 
+      formatted_timestamp == "2022-11-25 00:00:00" || 
       formatted_timestamp == "2023-01-02 00:00:00" || 
       formatted_timestamp == "2023-01-16 00:00:00" ||
       formatted_timestamp == "2023-02-20 00:00:00";

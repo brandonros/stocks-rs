@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
-use crate::{database, json_time};
+use crate::{json_time};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -69,45 +69,6 @@ pub struct Candle {
   pub low: f64,
   pub close: f64,
   pub volume: i64,
-}
-
-impl database::ToQuery for Candle {
-  fn insert(&self) -> (&str, Vec<(&str, &dyn rusqlite::ToSql)>) {
-    let query = "
-        INSERT OR REPLACE INTO candles (
-          symbol,
-          resolution,
-          scraped_at,
-          timestamp,
-          open,
-          high,
-          low,
-          close,
-          volume
-      ) VALUES (
-          :symbol,
-          :resolution,
-          strftime('%s', 'now'),
-          :timestamp,
-          :open,
-          :high,
-          :low,
-          :close,
-          :volume
-      )
-    ";
-    let params = rusqlite::named_params! {
-      ":symbol": "SPY", // TODO: hardcoded this to get rid of .clone everywhere
-      ":resolution": "1", // TODO: hardcoded this to get rid of .clone everywhere
-      ":timestamp": self.timestamp,
-      ":open": self.open,
-      ":high": self.high,
-      ":low": self.low,
-      ":close": self.close,
-      ":volume": self.volume
-    };
-    return (query, params.to_vec());
-  }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

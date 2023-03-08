@@ -1,73 +1,14 @@
 use std::collections::HashMap;
 use ordered_float::OrderedFloat;
 
-use crate::{database::*, structs::*};
-
-pub fn get_candle_snapshots_from_database(
-  connection: &Database,
-  symbol: &str,
-  resolution: &str,
-  start_timestamp: i64,
-  end_timestamp: i64,
-) -> Vec<CandleSnapshot> {
-  let query = format!(
-    "
-    select scraped_at,
-      timestamp, 
-      open, 
-      high, 
-      low,
-      close,
-      volume
-    from candles 
-    where timestamp >= {start_timestamp} and timestamp <= {end_timestamp}
-    and scraped_at = (select scraped_at from candles where timestamp >= {start_timestamp} and timestamp <= {end_timestamp} order by scraped_at desc limit 1) 
-    and symbol = '{symbol}'
-    and resolution = '{resolution}'
-    ORDER BY timestamp ASC
-    "
-  );
-  // TODO: filter out current partial candle and only look at 100% closed candles?
-  // TODO: how to check if candle_scraper process crashed and data is stale/partial?
-  return connection.get_rows_from_database::<CandleSnapshot>(&query);
-}
-
-pub fn get_live_candle_snapshots_from_database(
-  connection: &Database,
-  symbol: &str,
-  resolution: &str,
-  eastern_now_timestamp: i64,
-  start_timestamp: i64,
-  candle_lookup_max_timestamp: i64,
-) -> Vec<CandleSnapshot> {
-  let query = format!(
-    "
-    select scraped_at,
-      timestamp, 
-      open, 
-      high, 
-      low,
-      close,
-      volume
-    from candles 
-    where timestamp >= {start_timestamp} and timestamp <= {candle_lookup_max_timestamp}
-    and scraped_at = (select scraped_at from candles where scraped_at >= {start_timestamp} and scraped_at <= {eastern_now_timestamp} order by scraped_at desc limit 1) 
-    and symbol = '{symbol}'
-    and resolution = '{resolution}'
-    ORDER BY timestamp ASC
-  "
-  );
-  // TODO: filter out current partial candle and only look at 100% closed candles?
-  // TODO: how to check if candle_scraper process crashed and data is stale/partial?
-  return connection.get_rows_from_database::<CandleSnapshot>(&query);
-}
+use crate::{structs::*};
 
 pub fn get_candles_by_date_as_continuous_vec(dates: &Vec<String>, candles_date_map: &HashMap<String, Vec<Candle>>) -> Vec<Candle> {
   let mut candles = vec![];
   for date in dates {
     let mut date_candles = candles_date_map.get(date).unwrap().clone();
     let num_date_candles = date_candles.len();
-    if num_date_candles < 500 {
+    if num_date_candles < 108 {
       log::warn!("not enough candles? date = {date} num_date_candles = {num_date_candles}")
     }
     candles.append(&mut date_candles);
@@ -75,27 +16,45 @@ pub fn get_candles_by_date_as_continuous_vec(dates: &Vec<String>, candles_date_m
   return candles;
 }
 
-pub fn convert_timeframe(candles: &Vec<Candle>, source_timeframe: usize, target_timeframe: usize) -> Vec<Candle> {
-  assert!(source_timeframe == 1);
-  let chunks: Vec<&[Candle]> = candles.chunks(target_timeframe).collect();
-  return chunks.into_iter().map(|chunk| {
-    // check length
-    if chunk.len() < target_timeframe {
-      log::warn!("not enough candles {:?}", chunk);
+pub fn convert_timeframe(start_timestamp: i64, end_timestamp: i64, resolution: &str, one_minute_candles: &Vec<Candle>) -> Vec<Candle> {
+  let mut grouped_candles: Vec<Candle> = vec![];
+  let mut pointer = start_timestamp;
+  let step = if resolution == "1" {
+    60
+  } else if resolution == "5" {
+    60 * 5
+  } else {
+    unimplemented!()
+  };
+  // loop over the entire trading day, grouping candles
+  while pointer <= end_timestamp {
+    let scaled_candle_start = pointer;
+    let scaled_candle_end = pointer + step - 1;
+    let scaled_candle_rows = one_minute_candles.iter().filter(|candle| {
+      return candle.timestamp >= scaled_candle_start && candle.timestamp <= scaled_candle_end;
+    }).collect::<Vec<_>>();
+    if scaled_candle_rows.len() == 0 {
+      log::warn!("no candles = {}", pointer);
+      pointer += step;
+      continue;
     }
-    let timestamp = chunk[0].timestamp;
-    let open = chunk[0].open;
-    let low = chunk.iter().map(|candle| OrderedFloat(candle.low)).min().unwrap().into_inner();
-    let high = chunk.iter().map(|candle| OrderedFloat(candle.high)).max().unwrap().into_inner();
-    let close = chunk[chunk.len() - 1].close; // TODO: used to be target_timeframe - 1 but weird alphavantage data missing?
-    let volume = chunk.iter().fold(0, |prev, candle| prev + candle.volume);
-    return Candle {
+    let first_row = &scaled_candle_rows[0];
+    let last_row = &scaled_candle_rows[scaled_candle_rows.len() - 1]; // edge case example: pre-market doesn't always have 5 1 minute candles
+    let timestamp = first_row.timestamp;
+    let open = first_row.open;
+    let low = scaled_candle_rows.iter().map(|candle| OrderedFloat(candle.low)).min().unwrap().into_inner();
+    let high = scaled_candle_rows.iter().map(|candle| OrderedFloat(candle.high)).max().unwrap().into_inner();
+    let close = last_row.close;
+    let volume = scaled_candle_rows.iter().fold(0, |prev, candle| prev + candle.volume);
+    grouped_candles.push(Candle {
       timestamp,
       open,
       high,
       low,
       close,
       volume
-    };
-  }).collect();
+    });
+    pointer += step;
+  }
+  return grouped_candles;
 }

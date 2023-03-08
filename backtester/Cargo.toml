@@ -15,8 +15,6 @@ serde_json = { workspace = true }
 # time
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
-# database
-rusqlite = { workspace = true }
 # technical analysis
 ta = { workspace = true }
 # common
@@ -27,3 +25,5 @@ rust_decimal_macros = { workspace = true }
 ordered-float = { workspace = true }
 # paralell iteration
 rayon = { workspace = true }
+# providers
+providers = { path = "../providers" }

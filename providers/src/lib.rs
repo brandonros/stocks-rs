@@ -40,6 +40,27 @@ impl FromStr for Provider {
   }
 }
 
+pub fn get_cached_candles_by_provider_name(
+  provider_name: &str,
+  symbol: &str,
+  resolution: &str,
+  from: DateTime<Tz>,
+  to: DateTime<Tz>,
+) -> Result<Vec<Candle>, String> {
+  match provider_name {
+    "polygon" => {
+      let provider = self::polygon::Polygon::new();
+      let result = provider.get_cached_candles(symbol, resolution, from, to);
+      if result.is_err() {
+        return Err(format!("{:?}", result));
+      }
+      return Ok(result.unwrap());
+    }
+    _ => unimplemented!(),
+  }
+}
+
+
 // TODO: convert this to a trait?
 pub async fn get_candles_by_provider_name(
   provider_name: &str,

@@ -21,7 +21,5 @@ yahoo_finance_api = { workspace = true }
 common = { path = "../common" }
 # providers
 providers = { path = "../providers" }
-# database
-rusqlite = { workspace = true }
 # env vars
 dotenv = { workspace = true }
