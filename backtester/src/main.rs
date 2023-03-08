@@ -173,7 +173,7 @@ fn build_candles_date_map(provider_name: &str, symbol: &str, resolution: &str, d
     let end_timestamp = end.timestamp();
     // get candles from files
     let (from, to) = common::market_session::get_extended_market_session_start_and_end_from_string(date);
-    let provider_candles = providers::get_cached_candles_by_provider_name(provider_name, symbol, resolution, from, to).unwrap();
+    let provider_candles = providers::get_cached_candles_by_provider_name(provider_name, symbol, "1", from, to).unwrap(); // always pull from database as 1 minute, scale to 5+ later?
     if provider_candles.len() == 0 {
       panic!("no candles for {date}");
     }
@@ -224,7 +224,7 @@ fn main() {
   let trade_generation_context_combinations = generate_trade_generation_context_combinations();
   let backtest_context_combinations = generate_backtest_context_combinations();
   // configure thread pool
-  rayon::ThreadPoolBuilder::new().num_threads(0).build_global().unwrap();
+  rayon::ThreadPoolBuilder::new().num_threads(8).build_global().unwrap();
   // backtest combinations
   let mut combination_results = backtest_combinations(&dates, &candles, &trade_generation_context_combinations, &backtest_context_combinations);
   // sort by most profitable to least profitable
@@ -233,6 +233,21 @@ fn main() {
     let b_score = b.compounded_profit_loss_percentage;
     return b_score.partial_cmp(&a_score).unwrap();
   });
-  let most_profitable_combination_backtest_result = &combination_results[0];
-  log::info!("{:?}", most_profitable_combination_backtest_result);
+  // build aggregatble friendly output
+  let mut values = vec![];
+  for combination_result in combination_results {
+    let trades = trading::generate_continuous_trades(&dates, &combination_result.trade_generation_context, &candles);
+    let trade_results = backtesting::generate_trades_results(&combination_result.backtest_context, &trades, &candles);
+    let value = serde_json::json!({
+      "combination_result": combination_result,
+      "trades": trades,
+      "trade_results": trade_results,
+      "dates_start": dates_start,
+      "dates_end": dates_end
+    });
+    values.push(value);
+  }
+  let stringified_value = serde_json::to_string_pretty(&values).unwrap();
+  let mut file = std::fs::File::create(format!("./output/{dates_start}-{dates_end}.json")).unwrap();
+  file.write_all(stringified_value.as_bytes()).unwrap();
 }

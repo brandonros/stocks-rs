@@ -5,11 +5,9 @@ Monorepo for various projects related to stocks/backtesting/algorithmic trading/
 
 ```shell
 # scrape candles from API/CSV -> SQLite
-cargo run --release --bin scraper alpha_vantage 2023-01-01 2023-03-03
 cargo run --release --bin scraper polygon 2022-01-01 2023-03-06
 # hyperoptimizer technical analysis indicators parameters while scoring for profit/loss
-cargo run --release --bin backtester polygon SPY 1 2023-01-01 2023-03-03
-cargo run --release --bin backtester alpha_vantage SPY 1 2023-01-01 2023-03-03
+cargo run --release --bin backtester polygon SPY 5 2022-01-01 2023-03-03
 ```
 
 ## Results

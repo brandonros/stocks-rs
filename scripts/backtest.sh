@@ -438,7 +438,14 @@ cargo build --release
 # backtest
 for date in "${dates[@]}"
 do
-  ./target/release/backtester polygon SPY 1 "$date" "$date"
-  mv "output/$date 00:00:00-$date 15:59:59.json" "output/backtest-result-$date.json"
+  ./target/release/backtester polygon SPY 5 "$date" "$date"
+  EXIT_CODE=$?
+  if [[ $EXIT_CODE -ne 0 ]]
+  then
+    echo "$date failure?"
+  else
+    mv "./output/$date 00:00:00-$date 15:59:59.json" "./output/backtest-result-$date.json"
+  fi
 done
 # aggregate
+node scripts/aggregate.mjs > output/aggregation-results.csv
