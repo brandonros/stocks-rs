@@ -12,12 +12,17 @@ rust-script src/date_generator.rs $START_DATE $END_DATE > ./output/dates.txt
 
 ~~~sh
 # make sure POLYGON_API_KEY environment variable is set
-TICKER='SPY'
+SYMBOL='SPY'
 RESOLUTION='5'
 mkdir data/
 cat ./output/dates.txt | while read DATE
 do
-  ./scrape.sh $DATE $TICKER $RESOLUTION
+  FROM_TIMESTAMP=$(date -j -f "%Y-%m-%d %I:%M:%S %p" "$DATE 04:00:00 AM" "+%s")
+  FROM_TIMESTAMP=$((FROM_TIMESTAMP * 1000))
+  TO_TIMESTAMP=$((FROM_TIMESTAMP + 57600000)) # 60 * 16 hours = 57600 seconds = 8pm
+  LIMIT=1000
+  curl "https://api.polygon.io/v2/aggs/ticker/$SYMBOL/range/$RESOLUTION/minute/$FROM_TIMESTAMP/$TO_TIMESTAMP?adjusted=true&sort=asc&limit=$LIMIT&apiKey=$POLYGON_API_KEY" -o "./data/polygon-$SYMBOL-$RESOLUTION-$FROM_TIMESTAMP-$TO_TIMESTAMP.json"
+  # TODO: jq result to make sure no errors
   sleep 15 # due to API request limits
 done
 ~~~
