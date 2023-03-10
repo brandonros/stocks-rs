@@ -3,12 +3,12 @@ use std::{collections::HashMap, fs::File, time::Instant};
 use chrono::{DateTime, Datelike, Duration, TimeZone, Weekday};
 use chrono_tz::{Tz, US};
 use csv::ReaderBuilder;
+use memoize::memoize;
+use rust_decimal::prelude::*;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
-use rust_decimal::prelude::*;
 use serde::Deserialize;
 use ta::{indicators::SimpleMovingAverage, Next};
-use memoize::memoize;
 
 #[derive(PartialEq, Debug, Clone)]
 enum Direction {
@@ -101,7 +101,7 @@ struct BacktestParameters {
 struct SignalParameters {
   warmup_periods: usize,
   fast_periods: usize,
-  slow_periods: usize
+  slow_periods: usize,
 }
 
 fn build_decimal_range(min: Decimal, max: Decimal, step: Decimal) -> Vec<Decimal> {
@@ -276,7 +276,12 @@ fn calculate_profit_loss(direction: &Direction, open_price: f64, exit_price: f64
   }
 }
 
-fn backtest_trade(trade_open: &Trade, trade_close: &Trade, candles_map: &HashMap<i64, &Candle>, backtest_parameters: &BacktestParameters) -> TradeBacktestResult {
+fn backtest_trade(
+  trade_open: &Trade,
+  trade_close: &Trade,
+  candles_map: &HashMap<i64, &Candle>,
+  backtest_parameters: &BacktestParameters,
+) -> TradeBacktestResult {
   let slippage_percentage = backtest_parameters.slippage_percentage;
   let profit_limit_percentage = backtest_parameters.profit_limit_percentage;
   let stop_loss_percentage = backtest_parameters.stop_loss_percentage;
@@ -506,7 +511,10 @@ fn print_progress(num_tested: usize, num_total: usize, start: Instant) {
     let num_left = num_total - num_tested;
     let eta_sec = num_left as f64 / rate_sec as f64;
     let percent = (num_tested as f64 / num_total as f64) * 100.0;
-    println!("{}/{} {:.0}% elapsed {}s eta {:.0}s {:.0}/sec", num_tested, num_total, percent, elapsed_sec, eta_sec, rate_sec)
+    println!(
+      "{}/{} {:.0}% elapsed {}s eta {:.0}s {:.0}/sec",
+      num_tested, num_total, percent, elapsed_sec, eta_sec, rate_sec
+    )
   }
 }
 
@@ -557,7 +565,7 @@ fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
       let backtest_context = SignalParameters {
         warmup_periods: 1,
         fast_periods: *fast_periods,
-        slow_periods: *slow_periods
+        slow_periods: *slow_periods,
       };
       signal_parameter_combinations.push(backtest_context);
     }
@@ -593,9 +601,14 @@ fn main() {
       // group
       for trade_backtest_result in &trade_backtest_results {
         let grouping_key = trade_backtest_result.grouping_key;
-        let filtered_trade_backtest_results = trade_backtest_results.iter().filter(|result| result.grouping_key == grouping_key).collect::<Vec<_>>();
+        let filtered_trade_backtest_results = trade_backtest_results
+          .iter()
+          .filter(|result| result.grouping_key == grouping_key)
+          .collect::<Vec<_>>();
         let num_trades = filtered_trade_backtest_results.len();
-        let total_profit_loss_percentage = filtered_trade_backtest_results.iter().fold(0.0, |acc, result| acc + result.profit_loss_percentage);
+        let total_profit_loss_percentage = filtered_trade_backtest_results
+          .iter()
+          .fold(0.0, |acc, result| acc + result.profit_loss_percentage);
         let entry = results_map.get(&grouping_key);
         if entry.is_none() {
           results_map.insert(grouping_key, (signal_parameters, backtest_parameters, num_trades, total_profit_loss_percentage));
@@ -610,7 +623,7 @@ fn main() {
       // progress
       num_tested += 1;
       print_progress(num_tested, num_combinations_total, start);
-    } 
+    }
   }
   // print results
   println!("grouping_key,warmup_periods,fast_periods,slow_periods,slippage_percentage,profit_limit_percentage,stop_loss_percentage,num_trades,total_profit_loss_percentage");
