@@ -284,6 +284,7 @@ fn backtest_trade(
   trade_close: &Trade,
   candles_map: &HashMap<i64, &Candle>,
   backtest_parameters: &BacktestParameters,
+  candle_size_seconds: i64,
 ) -> TradeBacktestResult {
   let slippage_percentage = backtest_parameters.slippage_percentage;
   let profit_limit_percentage = backtest_parameters.profit_limit_percentage;
@@ -299,7 +300,6 @@ fn backtest_trade(
   let stop_loss_price = calculate_stop_loss_price(&trade_open.direction, open_price, stop_loss_percentage);
   // determine trade exit
   let determine_trade_exit = || {
-    let candle_size_seconds = 300; // TODO: do not hardcode
     let mut pointer = trade_open.timestamp;
     while pointer <= trade_close.timestamp {
       let candle = candles_map.get(&pointer).unwrap();
@@ -483,7 +483,7 @@ fn build_trades(signals: &Vec<Signal>) -> Vec<Trade> {
   return trades;
 }
 
-fn backtest_trades(trades: &Vec<Trade>, candles_map: &HashMap<i64, &Candle>, backtest_parameters: &BacktestParameters) -> HashMap<i64, Vec<TradeBacktestResult>> {
+fn backtest_trades(trades: &Vec<Trade>, candles_map: &HashMap<i64, &Candle>, backtest_parameters: &BacktestParameters, candle_size_seconds: i64) -> HashMap<i64, Vec<TradeBacktestResult>> {
   // chunk trades
   let trades_slice: &[Trade] = &trades;
   let chunk_size = 2; // open + close
@@ -499,7 +499,7 @@ fn backtest_trades(trades: &Vec<Trade>, candles_map: &HashMap<i64, &Candle>, bac
     assert!(trade_open.direction == trade_close.direction);
     assert!(trade_open.timestamp != trade_close.timestamp);
     // backtest trade
-    let result = backtest_trade(&trade_open, &trade_close, &candles_map, &backtest_parameters);
+    let result = backtest_trade(&trade_open, &trade_close, &candles_map, &backtest_parameters, candle_size_seconds);
     let entry = grouped_results_map.get_mut(&result.grouping_key);
     if entry.is_none() {
       grouped_results_map.insert(result.grouping_key, vec![result]);
@@ -594,40 +594,12 @@ fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
   ];
 }
 
-type Foo = (usize, f64);
-
-fn backtest_combination(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, backtest_parameters: &BacktestParameters, signal_parameters: &SignalParameters) -> HashMap<i64, Foo> {
-  let mut results_map = HashMap::new();
-  // build signals
-  let signals = build_signals(&candles, &candles_map, &signal_parameters);
-  // build trades from signals
-  let trades = build_trades(&signals);
-  // backtest trades
-  let trade_backtest_results_map = backtest_trades(&trades, &candles_map, &backtest_parameters);
-  for (grouping_key, filtered_trade_backtest_results) in trade_backtest_results_map.iter() {
-    let num_trades = filtered_trade_backtest_results.len();
-    let total_profit_loss_percentage = filtered_trade_backtest_results
-      .iter()
-      .fold(0.0, |acc, result| acc + result.profit_loss_percentage);
-    let entry = results_map.get(grouping_key);
-    if entry.is_none() {
-      results_map.insert(*grouping_key, (num_trades, total_profit_loss_percentage));
-    } else {
-      let (entry_num_trades, entry_total_profit_loss_percentage) = entry.unwrap();
-      let should_replace = total_profit_loss_percentage > *entry_total_profit_loss_percentage || total_profit_loss_percentage == *entry_total_profit_loss_percentage && num_trades < *entry_num_trades;
-      if should_replace {
-        results_map.insert(*grouping_key, (num_trades, total_profit_loss_percentage));
-      }
-    }
-  }
-  return results_map;
-}
-
 type Result = (SignalParameters, BacktestParameters, usize, f64);
 
 fn main() {
   // load candles
-  let candles_filename = "./output/candles.csv";
+  let candles_filename = "./output/candles-1m.csv";
+  let candle_size_seconds = 60;
   let candles = read_records_from_csv::<Candle>(&candles_filename);
   let mut candles_map = HashMap::new();
   for candle in &candles {
@@ -649,7 +621,7 @@ fn main() {
     // loop backtest parameter combinations
     for backtest_parameters in &backtest_parameter_combinations {
       // backtest trades
-      let trade_backtest_results_map = backtest_trades(&trades, &candles_map, &backtest_parameters);
+      let trade_backtest_results_map = backtest_trades(&trades, &candles_map, &backtest_parameters, candle_size_seconds);
       // group
       for (grouping_key, filtered_trade_backtest_results) in trade_backtest_results_map.iter() {
         let num_trades = filtered_trade_backtest_results.len();
@@ -660,7 +632,7 @@ fn main() {
         if entry.is_none() {
           results_map.insert(*grouping_key, (signal_parameters.clone(), backtest_parameters.clone(), num_trades, total_profit_loss_percentage));
         } else {
-          let (entry_signal_parameters, entry_backtest_parameters, entry_num_trades, entry_total_profit_loss_percentage) = entry.unwrap();
+          let (_entry_signal_parameters, _entry_backtest_parameters, entry_num_trades, entry_total_profit_loss_percentage) = entry.unwrap();
           let should_replace = total_profit_loss_percentage > *entry_total_profit_loss_percentage || total_profit_loss_percentage == *entry_total_profit_loss_percentage && num_trades < *entry_num_trades;
           if should_replace {
             results_map.insert(*grouping_key, (signal_parameters.clone(), backtest_parameters.clone(), num_trades, total_profit_loss_percentage));
