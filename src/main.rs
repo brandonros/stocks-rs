@@ -92,12 +92,15 @@ struct TradeBacktestResult {
   exit_type: TradeExitType,
 }
 
+
+#[derive(Debug)]
 struct BacktestParameters {
   slippage_percentage: f64,
   profit_limit_percentage: f64,
   stop_loss_percentage: f64,
 }
 
+#[derive(Debug)]
 struct SignalParameters {
   warmup_periods: usize,
   fast_periods: usize,
@@ -480,13 +483,13 @@ fn build_trades(signals: &Vec<Signal>) -> Vec<Trade> {
   return trades;
 }
 
-fn backtest_trades(trades: &Vec<Trade>, candles_map: &HashMap<i64, &Candle>, backtest_parameters: &BacktestParameters) -> Vec<TradeBacktestResult> {
+fn backtest_trades(trades: &Vec<Trade>, candles_map: &HashMap<i64, &Candle>, backtest_parameters: &BacktestParameters) -> HashMap<i64, Vec<TradeBacktestResult>> {
   // chunk trades
   let trades_slice: &[Trade] = &trades;
   let chunk_size = 2; // open + close
   let chunked_trades: Vec<&[Trade]> = trades_slice.chunks(chunk_size).collect();
   // backtest trades
-  let mut trade_backtest_results = vec![];
+  let mut grouped_results_map = HashMap::new();
   for chunk in chunked_trades {
     // get open + close from chunk
     let trade_open = &chunk[0];
@@ -497,9 +500,15 @@ fn backtest_trades(trades: &Vec<Trade>, candles_map: &HashMap<i64, &Candle>, bac
     assert!(trade_open.timestamp != trade_close.timestamp);
     // backtest trade
     let result = backtest_trade(&trade_open, &trade_close, &candles_map, &backtest_parameters);
-    trade_backtest_results.push(result);
+    let entry = grouped_results_map.get_mut(&result.grouping_key);
+    if entry.is_none() {
+      grouped_results_map.insert(result.grouping_key, vec![result]);
+    } else {
+      let vec = entry.unwrap();
+      vec.push(result);
+    }
   }
-  return trade_backtest_results;
+  return grouped_results_map;
 }
 
 fn print_progress(num_tested: usize, num_total: usize, start: Instant) {
@@ -521,10 +530,10 @@ fn print_progress(num_tested: usize, num_total: usize, start: Instant) {
 fn build_backtest_parameter_combinations() -> Vec<BacktestParameters> {
   let mut backtest_parameter_combinations = vec![];
   let min = dec!(0.002);
-  let max = dec!(0.05);
+  let max = dec!(0.01);
   let step = dec!(0.0005);
   let profit_limit_percentages = build_decimal_range(min, max, step);
-  let min = dec!(-0.05);
+  let min = dec!(-0.01);
   let max = dec!(-0.002);
   let step = dec!(0.0005);
   let stop_loss_percentages = build_decimal_range(min, max, step);
@@ -542,24 +551,19 @@ fn build_backtest_parameter_combinations() -> Vec<BacktestParameters> {
 }
 
 fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
-  let mut signal_parameter_combinations = vec![];
+  /*let mut signal_parameter_combinations = vec![];
   let min = 5;
-  let max = 100;
-  let step = 10;
+  let max = 25;
+  let step = 5;
   let fast_periods = build_usize_range(min, max, step);
   let min = 5;
-  let max = 100;
-  let step = 10;
+  let max = 50;
+  let step = 5;
   let slow_periods = build_usize_range(min, max, step);
   for slow_periods in &slow_periods {
     for fast_periods in &fast_periods {
       // skip where fast is greater than or equal to slow?
       if fast_periods >= slow_periods {
-        continue;
-      }
-      // skip fast + slow being too close?
-      let difference = slow_periods - fast_periods;
-      if difference < 10 {
         continue;
       }
       let backtest_context = SignalParameters {
@@ -570,8 +574,55 @@ fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
       signal_parameter_combinations.push(backtest_context);
     }
   }
-  return signal_parameter_combinations;
+  return signal_parameter_combinations;*/
+  return vec![
+    SignalParameters { warmup_periods: 1, fast_periods:  5, slow_periods: 15 },
+    SignalParameters { warmup_periods: 1, fast_periods: 10, slow_periods: 15 },
+    SignalParameters { warmup_periods: 1, fast_periods: 10, slow_periods: 20 },
+    SignalParameters { warmup_periods: 1, fast_periods: 10, slow_periods: 25 },
+    SignalParameters { warmup_periods: 1, fast_periods: 10, slow_periods: 30 },
+    SignalParameters { warmup_periods: 1, fast_periods: 10, slow_periods: 45 },
+    SignalParameters { warmup_periods: 1, fast_periods: 15, slow_periods: 20 },
+    SignalParameters { warmup_periods: 1, fast_periods: 15, slow_periods: 25 },
+    SignalParameters { warmup_periods: 1, fast_periods: 15, slow_periods: 35 },
+    SignalParameters { warmup_periods: 1, fast_periods: 20, slow_periods: 25 },
+    SignalParameters { warmup_periods: 1, fast_periods: 20, slow_periods: 30 },
+    SignalParameters { warmup_periods: 1, fast_periods: 25, slow_periods: 30 },
+    SignalParameters { warmup_periods: 1, fast_periods: 25, slow_periods: 35 },
+    SignalParameters { warmup_periods: 1, fast_periods: 25, slow_periods: 40 },
+    SignalParameters { warmup_periods: 1, fast_periods: 25, slow_periods: 45 },
+  ];
 }
+
+type Foo = (usize, f64);
+
+fn backtest_combination(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, backtest_parameters: &BacktestParameters, signal_parameters: &SignalParameters) -> HashMap<i64, Foo> {
+  let mut results_map = HashMap::new();
+  // build signals
+  let signals = build_signals(&candles, &candles_map, &signal_parameters);
+  // build trades from signals
+  let trades = build_trades(&signals);
+  // backtest trades
+  let trade_backtest_results_map = backtest_trades(&trades, &candles_map, &backtest_parameters);
+  for (grouping_key, filtered_trade_backtest_results) in trade_backtest_results_map.iter() {
+    let num_trades = filtered_trade_backtest_results.len();
+    let total_profit_loss_percentage = filtered_trade_backtest_results
+      .iter()
+      .fold(0.0, |acc, result| acc + result.profit_loss_percentage);
+    let entry = results_map.get(grouping_key);
+    if entry.is_none() {
+      results_map.insert(*grouping_key, (num_trades, total_profit_loss_percentage));
+    } else {
+      let (entry_num_trades, entry_total_profit_loss_percentage) = entry.unwrap();
+      let should_replace = total_profit_loss_percentage > *entry_total_profit_loss_percentage || total_profit_loss_percentage == *entry_total_profit_loss_percentage && num_trades < *entry_num_trades;
+      if should_replace {
+        results_map.insert(*grouping_key, (num_trades, total_profit_loss_percentage));
+      }
+    }
+  }
+  return results_map;
+}
+
 
 fn main() {
   // load candles
@@ -583,61 +634,28 @@ fn main() {
   }
   // combinations
   let backtest_parameter_combinations = build_backtest_parameter_combinations();
-  let signal_parameter_combinations = build_signal_parameter_combinations();
-  // try all combinations
-  let mut num_tested = 0;
-  let mut results_map = HashMap::new();
-  let num_combinations_total = signal_parameter_combinations.len() * backtest_parameter_combinations.len();
-  let start = std::time::Instant::now();
-  for signal_parameters in &signal_parameter_combinations {
-    // build signals
-    let signals = build_signals(&candles, &candles_map, &signal_parameters);
-    // build trades from signals
-    let trades = build_trades(&signals);
-    // loop backtest parameter combinations
-    for backtest_parameters in &backtest_parameter_combinations {
-      // backtest trades
-      let trade_backtest_results = backtest_trades(&trades, &candles_map, &backtest_parameters);
-      // group
-      for trade_backtest_result in &trade_backtest_results {
-        let grouping_key = trade_backtest_result.grouping_key;
-        let filtered_trade_backtest_results = trade_backtest_results
-          .iter()
-          .filter(|result| result.grouping_key == grouping_key)
-          .collect::<Vec<_>>();
-        let num_trades = filtered_trade_backtest_results.len();
-        let total_profit_loss_percentage = filtered_trade_backtest_results
-          .iter()
-          .fold(0.0, |acc, result| acc + result.profit_loss_percentage);
-        let entry = results_map.get(&grouping_key);
-        if entry.is_none() {
-          results_map.insert(grouping_key, (signal_parameters, backtest_parameters, num_trades, total_profit_loss_percentage));
-        } else {
-          let entry = entry.unwrap();
-          let should_replace = total_profit_loss_percentage > entry.3 || total_profit_loss_percentage == entry.3 && num_trades < entry.2;
-          if should_replace {
-            results_map.insert(grouping_key, (signal_parameters, backtest_parameters, num_trades, total_profit_loss_percentage));
-          }
-        }
-      }
-      // progress
-      num_tested += 1;
-      print_progress(num_tested, num_combinations_total, start);
+  let parent_signal_parameter_combinations = build_signal_parameter_combinations();
+  for child_signal_parameter_combination in &parent_signal_parameter_combinations {
+    let signal_parameter_combinations = vec![child_signal_parameter_combination];
+    let results_map = backtest_combination()
+    // print results
+    //println!("grouping_key,warmup_periods,fast_periods,slow_periods,fast_slow_pair,slippage_percentage,profit_limit_percentage,stop_loss_percentage,num_trades,total_profit_loss_percentage");
+    let mut grouping_keys = results_map.keys().collect::<Vec<_>>();
+    grouping_keys.sort();
+    let mut total = 0.0;
+    for grouping_key in grouping_keys {
+      let entry = results_map.get(&grouping_key).unwrap();
+      let (signal_parameters, backtest_parameters, num_trades, total_profit_loss_percentage) = entry;
+      let warmup_periods = signal_parameters.warmup_periods;
+      let fast_periods = signal_parameters.fast_periods;
+      let slow_periods = signal_parameters.slow_periods;
+      let slippage_percentage = backtest_parameters.slippage_percentage;
+      let profit_limit_percentage = backtest_parameters.profit_limit_percentage;
+      let stop_loss_percentage = backtest_parameters.stop_loss_percentage;
+      let fast_slow_pair = format!("{fast_periods}:{slow_periods}");
+      //println!("{grouping_key},{warmup_periods},{fast_periods},{slow_periods},{fast_slow_pair},{slippage_percentage},{profit_limit_percentage},{stop_loss_percentage},{num_trades},{total_profit_loss_percentage}");
+      total += profit_limit_percentage;
     }
-  }
-  // print results
-  println!("grouping_key,warmup_periods,fast_periods,slow_periods,slippage_percentage,profit_limit_percentage,stop_loss_percentage,num_trades,total_profit_loss_percentage");
-  let mut grouping_keys = results_map.keys().collect::<Vec<_>>();
-  grouping_keys.sort();
-  for grouping_key in grouping_keys {
-    let entry = results_map.get(&grouping_key).unwrap();
-    let (signal_parameters, backtest_parameters, num_trades, total_profit_loss_percentage) = entry;
-    let warmup_periods = signal_parameters.warmup_periods;
-    let fast_periods = signal_parameters.fast_periods;
-    let slow_periods = signal_parameters.slow_periods;
-    let slippage_percentage = backtest_parameters.slippage_percentage;
-    let profit_limit_percentage = backtest_parameters.profit_limit_percentage;
-    let stop_loss_percentage = backtest_parameters.stop_loss_percentage;
-    println!("{grouping_key},{warmup_periods},{fast_periods},{slow_periods},{slippage_percentage},{profit_limit_percentage},{stop_loss_percentage},{num_trades},{total_profit_loss_percentage}");
+    println!("{child_signal_parameter_combination:?},{total}");
   }
 }
