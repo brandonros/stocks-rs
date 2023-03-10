@@ -15,7 +15,7 @@ END_DATE='2023-03-03'
 rust-script src/date_generator.rs $START_DATE $END_DATE > ./output/dates.txt
 ~~~
 
-## scrape_dates
+## scrape_polygon
 
 ~~~sh
 # make sure POLYGON_API_KEY environment variable is set
@@ -33,10 +33,10 @@ do
 done
 ~~~
 
-## transform
+## build_candles
 
 ~~~sh
-rust-script src/transform.rs > ./output/candles.csv
+rust-script src/candle_builder.rs > ./output/candles.csv
 ~~~
 
 ## generate_signals
