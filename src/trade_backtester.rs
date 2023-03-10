@@ -70,6 +70,12 @@ struct TradeBacktestResult {
   exit_type: TradeExitType
 }
 
+struct Parameters {
+  slippage_percentage: f64,
+  profit_limit_percentage: f64,
+  stop_loss_percentage: f64
+}
+
 fn read_records_from_csv<T>(filename: &str) -> Vec<T>
 where
   T: for<'de> Deserialize<'de>{
@@ -117,10 +123,18 @@ fn calculate_stop_loss_price(direction: &Direction, open_price: f64, stop_loss_p
   }
 }
 
-fn backtest_trade(trade_open: &Trade, trade_close: &Trade, candles_map: &HashMap<i64, Candle>) -> TradeBacktestResult {
-  let slippage_percentage = 0.000125;
-  let profit_limit_percentage = 0.004;
-  let stop_loss_percentage = -0.004;
+fn calculate_profit_loss(direction: &Direction, open_price: f64, exit_price: f64) -> f64 {
+  if *direction == Direction::Long {
+    return exit_price - open_price;
+  } else {
+    return open_price - exit_price;
+  }
+}
+
+fn backtest_trade(trade_open: &Trade, trade_close: &Trade, candles_map: &HashMap<i64, Candle>, parameters: &Parameters) -> TradeBacktestResult {
+  let slippage_percentage = parameters.slippage_percentage;
+  let profit_limit_percentage = parameters.profit_limit_percentage;
+  let stop_loss_percentage = parameters.stop_loss_percentage;
   // get candles
   let open_candle = candles_map.get(&trade_open.timestamp).unwrap();
   let close_candle = candles_map.get(&trade_close.timestamp).unwrap();
@@ -166,11 +180,7 @@ fn backtest_trade(trade_open: &Trade, trade_close: &Trade, candles_map: &HashMap
     return (TradeExitReason::Close, close_price, close_candle);
   };
   let (exit_reason, exit_price, exit_candle) = determine_trade_exit();
-  let profit_loss = if trade_open.direction == Direction::Long {
-    exit_price - open_price
-  } else {
-    open_price - exit_price
-  };
+  let profit_loss = calculate_profit_loss(&trade_open.direction, open_price, exit_price);
   let profit_loss_percentage = profit_loss / open_price;
   let exit_type = if profit_loss > 0.0 {
     TradeExitType::Win
@@ -205,13 +215,20 @@ fn main() {
   // load trades
   let trades_filename = std::env::args().nth(2).unwrap();
   let trades = read_records_from_csv::<Trade>(&trades_filename);
+  // parameters
+  let parameters = Parameters {
+    slippage_percentage: 0.000125,
+    profit_limit_percentage: 0.004,
+    stop_loss_percentage: -0.004
+  };
   // print header
   println!("open_timestamp,exit_timestamp,direction,open_price,exit_price,profit_loss,profit_loss_percentage,exit_reason,exit_type");
   // chunk trades
   let trades_slice: &[Trade] = &trades;
-  let chunked_trades: Vec<&[Trade]> = trades_slice.chunks(2).collect();
+  let chunk_size = 2; // open + close
+  let chunked_trades: Vec<&[Trade]> = trades_slice.chunks(chunk_size).collect();
   for chunk in chunked_trades {
-    // get open + close
+    // get open + close from chunk
     let trade_open = &chunk[0];
     let trade_close = &chunk[1];
     assert!(trade_open.r#type == TradeType::Open);
@@ -219,7 +236,7 @@ fn main() {
     assert!(trade_open.direction == trade_close.direction);
     assert!(trade_open.timestamp != trade_close.timestamp);
     // backtest trade
-    let result = backtest_trade(&trade_open, &trade_close, &candles_map);
+    let result = backtest_trade(&trade_open, &trade_close, &candles_map, &parameters);
     println!(
       "{open_timestamp},{exit_timestamp},{direction:?},{open_price:.2},{exit_price:.2},{profit_loss:.2},{profit_loss_percentage:.4},{exit_reason:?},{exit_type:?}", 
       open_timestamp = result.open_timestamp,
