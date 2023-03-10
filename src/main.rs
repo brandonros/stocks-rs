@@ -521,10 +521,10 @@ fn print_progress(num_tested: usize, num_total: usize, start: Instant) {
 fn build_backtest_parameter_combinations() -> Vec<BacktestParameters> {
   let mut backtest_parameter_combinations = vec![];
   let min = dec!(0.002);
-  let max = dec!(0.01);
+  let max = dec!(0.05);
   let step = dec!(0.0005);
   let profit_limit_percentages = build_decimal_range(min, max, step);
-  let min = dec!(-0.01);
+  let min = dec!(-0.05);
   let max = dec!(-0.002);
   let step = dec!(0.0005);
   let stop_loss_percentages = build_decimal_range(min, max, step);
@@ -544,11 +544,11 @@ fn build_backtest_parameter_combinations() -> Vec<BacktestParameters> {
 fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
   let mut signal_parameter_combinations = vec![];
   let min = 5;
-  let max = 55;
+  let max = 100;
   let step = 10;
   let fast_periods = build_usize_range(min, max, step);
   let min = 5;
-  let max = 55;
+  let max = 100;
   let step = 10;
   let slow_periods = build_usize_range(min, max, step);
   for slow_periods in &slow_periods {
@@ -638,6 +638,6 @@ fn main() {
     let slippage_percentage = backtest_parameters.slippage_percentage;
     let profit_limit_percentage = backtest_parameters.profit_limit_percentage;
     let stop_loss_percentage = backtest_parameters.stop_loss_percentage;
-    println!("{grouping_key},{warmup_periods},{fast_periods},{slow_periods},{slippage_percentage},{profit_limit_percentage},{stop_loss_percentage},{num_trades},{total_profit_loss_percentage}")
+    println!("{grouping_key},{warmup_periods},{fast_periods},{slow_periods},{slippage_percentage},{profit_limit_percentage},{stop_loss_percentage},{num_trades},{total_profit_loss_percentage}");
   }
 }
