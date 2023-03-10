@@ -14,7 +14,6 @@ rust-script src/date_generator.rs $START_DATE $END_DATE > ./output/dates.txt
 # make sure POLYGON_API_KEY environment variable is set
 SYMBOL='SPY'
 RESOLUTION='5'
-mkdir data/
 cat ./output/dates.txt | while read DATE
 do
   FROM_TIMESTAMP=$(date -j -f "%Y-%m-%d %I:%M:%S %p" "$DATE 04:00:00 AM" "+%s")

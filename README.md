@@ -10,6 +10,8 @@ cargo install rust-script
 ## How to use
 
 ```shell
+mkdir output/
+mkdir data/
 mask generate_dates
 mask scrape_dates
 mask transform
