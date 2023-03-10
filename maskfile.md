@@ -1,5 +1,12 @@
 # backtesting
 
+## init_directories
+
+~~~sh
+mkdir data/
+mkdir output/
+~~~
+
 ## generate_dates
 
 ~~~sh
