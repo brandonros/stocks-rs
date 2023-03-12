@@ -5,6 +5,8 @@ use chrono_tz::{Tz, US};
 use csv::ReaderBuilder;
 use memoize::memoize;
 use ordered_float::OrderedFloat;
+use rand::Rng;
+use rand::rngs::ThreadRng;
 use rust_decimal::prelude::*;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -356,7 +358,7 @@ fn backtest_trade(
   };
 }
 
-fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, signal_parameters: &SignalParameters, candle_size_seconds: i64) -> Vec<Signal> {
+fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, signal_parameters: &SignalParameters, candle_size_seconds: i64, rng: &mut ThreadRng) -> Vec<Signal> {
   let warmup_periods = signal_parameters.warmup_periods;
   let fast_periods = signal_parameters.fast_periods;
   let slow_periods = signal_parameters.slow_periods;
@@ -381,8 +383,8 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
     // TODO: prediction/estimation so that we aren't always late to trades?
     // get previous fully closed candle (alway look back 1 candle to prevent lookahead bias)
     let massaged_timestamp = pointer.timestamp() - candle_size_seconds;
-    let candle = candles_map.get(&massaged_timestamp);
-    if candle.is_none() {
+    let previous_candle = candles_map.get(&massaged_timestamp);
+    if previous_candle.is_none() {
       if current_session_type == MarketSessionType::Regular {
         panic!("no candle for {pointer} {massaged_timestamp}?");
       }
@@ -390,10 +392,32 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
       pointer = pointer + Duration::seconds(candle_size_seconds);
       continue;
     }
-    let candle = candle.unwrap();
+    let previous_candle = previous_candle.unwrap();
     // feed to indicators
-    last_fast = fast.next(candle.close);
-    last_slow = slow.next(candle.close);
+    last_fast = fast.next(previous_candle.close);
+    last_slow = slow.next(previous_candle.close);
+    // get only open price from current candle to prevent lookahead bias
+    let current_candle = candles_map.get(&pointer.timestamp());
+    if current_candle.is_none() {
+      if current_session_type == MarketSessionType::Regular {
+        panic!("no candle for {pointer} {massaged_timestamp}?");
+      }
+      // skip missing pre/post market candles
+      pointer = pointer + Duration::seconds(candle_size_seconds);
+      continue;
+    }
+    let current_candle = current_candle.unwrap();
+    // feed to indicators (pretend we can accurately predict close)
+    let accuracy = 0.45;
+    let predicted_close_correctly = rng.gen_bool(accuracy) == true;
+    if predicted_close_correctly == true {
+      last_fast = fast.next(current_candle.close);
+      last_slow = slow.next(current_candle.close);
+    } else {
+      last_fast = fast.next(current_candle.open);
+      last_slow = slow.next(current_candle.open);
+    }
+    // calculate indicator direction
     let indicator_direction = if last_fast > last_slow {
       Direction::Long
     } else {
@@ -509,11 +533,11 @@ fn build_backtest_parameter_combinations() -> Vec<BacktestParameters> {
 
 fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
   let mut signal_parameter_combinations = vec![];
-  let min = 5;
+  let min = 10;
   let max = 50;
   let step = 5;
   let fast_periods = build_usize_range(min, max, step);
-  let min = 10;
+  let min = 20;
   let max = 100;
   let step = 10;
   let slow_periods = build_usize_range(min, max, step);
@@ -535,6 +559,8 @@ fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
 }
 
 fn main() {
+  // rng
+  let mut rng = rand::thread_rng();
   // load candles
   let resolution = 1;
   let candles_filename = format!("./output/candles-{resolution}.csv");
@@ -550,7 +576,7 @@ fn main() {
   let signal_parameter_combinations = build_signal_parameter_combinations();
   for signal_parameters in &signal_parameter_combinations {
     // build signals
-    let signals = build_signals(&candles, &candles_map, &signal_parameters, candle_size_seconds);
+    let signals = build_signals(&candles, &candles_map, &signal_parameters, candle_size_seconds, &mut rng);
     // build trades from signals
     let trades = build_trades(&signals);
     let trades_slice: &[Trade] = &trades;

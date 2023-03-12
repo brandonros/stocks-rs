@@ -507,6 +507,7 @@ dependencies = [
  "csv",
  "memoize",
  "ordered-float",
+ "rand",
  "rayon",
  "rust_decimal",
  "rust_decimal_macros",
