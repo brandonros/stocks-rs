@@ -382,7 +382,7 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
     let candle = candles_map.get(&massaged_timestamp);
     if candle.is_none() {
       if current_session_type == MarketSessionType::Regular {
-        panic!("no candle for {pointer} {timestamp}?", timestamp = pointer.timestamp());
+        panic!("no candle for {pointer} {massaged_timestamp}?");
       }
       // skip missing pre/post market candles
       pointer = pointer + Duration::seconds(candle_size_seconds);
@@ -415,7 +415,7 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
     // push
     signals.push(Signal {
       grouping_key: regular_session_start.timestamp(),
-      timestamp: candle.start_timestamp,
+      timestamp: pointer.timestamp(), // do not use candle timestamp?
       direction,
     });
     // increment
