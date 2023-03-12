@@ -370,23 +370,22 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
   let parsed_end = datetime_from_timestamp(candles[candles.len() - 1].end_timestamp);
   let mut pointer = parsed_start;
   let mut signals = vec![];
-  while pointer.timestamp() <= parsed_end.timestamp() {
+  while pointer <= parsed_end {
     let current_session_type = determine_session_type(pointer.timestamp());
     // skip when market is not open
     if current_session_type == MarketSessionType::None {
-      pointer = pointer + Duration::minutes(candle_size_seconds / 60);
+      pointer = pointer + Duration::seconds(candle_size_seconds);
       continue;
     }
-    // get candle
-    let candle = candles_map.get(&pointer.timestamp());
+    // get candle (alway look back 1 candle to prevent lookahead bias)
+    let massaged_timestamp = pointer.timestamp() - candle_size_seconds;
+    let candle = candles_map.get(&massaged_timestamp);
     if candle.is_none() {
-      if current_session_type == MarketSessionType::Pre || current_session_type == MarketSessionType::Post {
-        //println!("no candle for {pointer} {timestamp}?", timestamp = pointer.timestamp());
-      }
       if current_session_type == MarketSessionType::Regular {
         panic!("no candle for {pointer} {timestamp}?", timestamp = pointer.timestamp());
       }
-      pointer = pointer + Duration::minutes(candle_size_seconds / 60);
+      // skip missing pre/post market candles
+      pointer = pointer + Duration::seconds(candle_size_seconds);
       continue;
     }
     let candle = candle.unwrap();
@@ -402,7 +401,6 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
     let is_post_market = current_session_type == MarketSessionType::Post;
     let (regular_session_start, regular_session_end) = get_regular_market_session_start_and_end(pointer.timestamp());
     let distance_to_regular_session_end = regular_session_end.timestamp() - pointer.timestamp();
-    let candle_size_seconds = candle.end_timestamp - candle.start_timestamp + 1;
     let is_last_candle_of_regular_session = current_session_type == MarketSessionType::Regular && distance_to_regular_session_end <= (candle_size_seconds - 1);
     let should_be_flat = is_warmed_up == false || is_pre_market || is_post_market || is_last_candle_of_regular_session;
     let direction = if should_be_flat {
@@ -414,14 +412,14 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
         Direction::Short
       }
     };
-    // log
+    // push
     signals.push(Signal {
       grouping_key: regular_session_start.timestamp(),
       timestamp: candle.start_timestamp,
       direction,
     });
     // increment
-    pointer = pointer + Duration::minutes(candle_size_seconds / 60);
+    pointer = pointer + Duration::seconds(candle_size_seconds);
   }
   return signals;
 }
