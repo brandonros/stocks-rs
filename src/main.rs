@@ -553,12 +553,12 @@ fn build_backtest_parameter_combinations() -> Vec<BacktestParameters> {
 fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
   let mut signal_parameter_combinations = vec![];
   let min = 5;
-  let max = 100;
-  let step = 1;
+  let max = 40;
+  let step = 5;
   let fast_periods = build_usize_range(min, max, step);
-  let min = 5;
-  let max = 200;
-  let step = 1;
+  let min = 10;
+  let max = 50;
+  let step = 10;
   let slow_periods = build_usize_range(min, max, step);
   for slow_periods in &slow_periods {
     for fast_periods in &fast_periods {
@@ -599,7 +599,7 @@ type Result = (SignalParameters, BacktestParameters, usize, f64);
 fn main() {
   // load candles
   let resolution = 1;
-  let candles_filename = format!("./output/candles-{resolution}m.csv");
+  let candles_filename = format!("./output/candles-{resolution}.csv");
   let candle_size_seconds = resolution * 60;
   let candles = read_records_from_csv::<Candle>(&candles_filename);
   let mut candles_map = HashMap::new();
@@ -646,7 +646,7 @@ fn main() {
     }
   }
   // print results
-  println!("grouping_key,warmup_periods,fast_periods,slow_periods,slippage_percentage,profit_limit_percentage,stop_loss_percentage,num_trades,total_profit_loss_percentage");
+  println!("grouping_key,warmup_periods,fast_periods,slow_periods,fast_slow_pair,slippage_percentage,profit_limit_percentage,stop_loss_percentage,num_trades,total_profit_loss_percentage");
   let mut grouping_keys = results_map.keys().collect::<Vec<_>>();
   grouping_keys.sort();
   for grouping_key in grouping_keys {
@@ -658,6 +658,7 @@ fn main() {
     let slippage_percentage = backtest_parameters.slippage_percentage;
     let profit_limit_percentage = backtest_parameters.profit_limit_percentage;
     let stop_loss_percentage = backtest_parameters.stop_loss_percentage;
-    println!("{grouping_key},{warmup_periods},{fast_periods},{slow_periods},{slippage_percentage},{profit_limit_percentage},{stop_loss_percentage},{num_trades},{total_profit_loss_percentage}");
+    let fast_slow_pair = format!("{fast_periods}:{slow_periods}");
+    println!("{grouping_key},{warmup_periods},{fast_periods},{slow_periods},{fast_slow_pair},{slippage_percentage},{profit_limit_percentage},{stop_loss_percentage},{num_trades},{total_profit_loss_percentage}");
   }
 }
