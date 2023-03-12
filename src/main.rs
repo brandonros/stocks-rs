@@ -394,6 +394,11 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
     // feed to indicators
     last_fast = fast.next(candle.close);
     last_slow = slow.next(candle.close);
+    let indicator_direction = if last_fast > last_slow {
+      Direction::Long
+    } else {
+      Direction::Short
+    };
     num_periods += 1;
     // calculate warmup
     let is_warmed_up = num_periods >= warmup_periods;
@@ -407,11 +412,7 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
     let direction = if should_be_flat {
       Direction::Flat
     } else {
-      if last_fast > last_slow {
-        Direction::Long
-      } else {
-        Direction::Short
-      }
+      indicator_direction
     };
     // push
     signals.push(Signal {
