@@ -354,7 +354,7 @@ fn backtest_trade(
   };
 }
 
-fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, signal_parameters: &SignalParameters) -> Vec<Signal> {
+fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, signal_parameters: &SignalParameters, candle_size_seconds: i64) -> Vec<Signal> {
   let warmup_periods = signal_parameters.warmup_periods;
   let fast_periods = signal_parameters.fast_periods;
   let slow_periods = signal_parameters.slow_periods;
@@ -373,7 +373,7 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
     let current_session_type = determine_session_type(pointer.timestamp());
     // skip when market is not open
     if current_session_type == MarketSessionType::None {
-      pointer = pointer + Duration::minutes(5);
+      pointer = pointer + Duration::minutes(candle_size_seconds / 60);
       continue;
     }
     // get candle
@@ -385,7 +385,7 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
       if current_session_type == MarketSessionType::Regular {
         panic!("no candle for {pointer} {timestamp}?", timestamp = pointer.timestamp());
       }
-      pointer = pointer + Duration::minutes(5);
+      pointer = pointer + Duration::minutes(candle_size_seconds / 60);
       continue;
     }
     let candle = candle.unwrap();
@@ -420,7 +420,7 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
       direction,
     });
     // increment
-    pointer = pointer + Duration::minutes(5);
+    pointer = pointer + Duration::minutes(candle_size_seconds / 60);
   }
   return signals;
 }
@@ -551,14 +551,14 @@ fn build_backtest_parameter_combinations() -> Vec<BacktestParameters> {
 }
 
 fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
-  /*let mut signal_parameter_combinations = vec![];
+  let mut signal_parameter_combinations = vec![];
   let min = 5;
-  let max = 25;
-  let step = 5;
+  let max = 100;
+  let step = 1;
   let fast_periods = build_usize_range(min, max, step);
   let min = 5;
-  let max = 50;
-  let step = 5;
+  let max = 200;
+  let step = 1;
   let slow_periods = build_usize_range(min, max, step);
   for slow_periods in &slow_periods {
     for fast_periods in &fast_periods {
@@ -574,8 +574,8 @@ fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
       signal_parameter_combinations.push(backtest_context);
     }
   }
-  return signal_parameter_combinations;*/
-  return vec![
+  return signal_parameter_combinations;
+  /*return vec![
     SignalParameters { warmup_periods: 1, fast_periods:  5, slow_periods: 15 },
     SignalParameters { warmup_periods: 1, fast_periods: 10, slow_periods: 15 },
     SignalParameters { warmup_periods: 1, fast_periods: 10, slow_periods: 20 },
@@ -591,15 +591,16 @@ fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
     SignalParameters { warmup_periods: 1, fast_periods: 25, slow_periods: 35 },
     SignalParameters { warmup_periods: 1, fast_periods: 25, slow_periods: 40 },
     SignalParameters { warmup_periods: 1, fast_periods: 25, slow_periods: 45 },
-  ];
+  ];*/
 }
 
 type Result = (SignalParameters, BacktestParameters, usize, f64);
 
 fn main() {
   // load candles
-  let candles_filename = "./output/candles-1m.csv";
-  let candle_size_seconds = 60;
+  let resolution = 1;
+  let candles_filename = format!("./output/candles-{resolution}m.csv");
+  let candle_size_seconds = resolution * 60;
   let candles = read_records_from_csv::<Candle>(&candles_filename);
   let mut candles_map = HashMap::new();
   for candle in &candles {
@@ -615,7 +616,7 @@ fn main() {
   let start = std::time::Instant::now();
   for signal_parameters in &signal_parameter_combinations {
     // build signals
-    let signals = build_signals(&candles, &candles_map, &signal_parameters);
+    let signals = build_signals(&candles, &candles_map, &signal_parameters, candle_size_seconds);
     // build trades from signals
     let trades = build_trades(&signals);
     // loop backtest parameter combinations
