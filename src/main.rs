@@ -4,11 +4,12 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Weekday};
 use chrono_tz::{Tz, US};
 use csv::ReaderBuilder;
 use memoize::memoize;
+use ordered_float::OrderedFloat;
 use rust_decimal::prelude::*;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::Deserialize;
-use ta::{indicators::SimpleMovingAverage, Next};
+use ta::{indicators::ExponentialMovingAverage, Next};
 
 #[derive(PartialEq, Debug, Clone)]
 enum Direction {
@@ -360,8 +361,8 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
   let fast_periods = signal_parameters.fast_periods;
   let slow_periods = signal_parameters.slow_periods;
   // build indicators
-  let mut fast = SimpleMovingAverage::new(fast_periods).unwrap();
-  let mut slow = SimpleMovingAverage::new(slow_periods).unwrap();
+  let mut fast = ExponentialMovingAverage::new(fast_periods).unwrap();
+  let mut slow = ExponentialMovingAverage::new(slow_periods).unwrap();
   let mut last_fast = 0.0;
   let mut last_slow = 0.0;
   let mut num_periods = 0;
@@ -377,6 +378,7 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
       pointer = pointer + Duration::seconds(candle_size_seconds);
       continue;
     }
+    // TODO: prediction/estimation so that we aren't always late to trades?
     // get previous fully closed candle (alway look back 1 candle to prevent lookahead bias)
     let massaged_timestamp = pointer.timestamp() - candle_size_seconds;
     let candle = candles_map.get(&massaged_timestamp);
@@ -390,9 +392,8 @@ fn build_signals(candles: &Vec<Candle>, candles_map: &HashMap<i64, &Candle>, sig
     }
     let candle = candle.unwrap();
     // feed to indicators
-    let hlc3 = (candle.high + candle.low + candle.close) / 3.0;
-    last_fast = fast.next(hlc3);
-    last_slow = slow.next(hlc3);
+    last_fast = fast.next(candle.close);
+    last_slow = slow.next(candle.close);
     num_periods += 1;
     // calculate warmup
     let is_warmed_up = num_periods >= warmup_periods;
@@ -508,11 +509,11 @@ fn build_backtest_parameter_combinations() -> Vec<BacktestParameters> {
 fn build_signal_parameter_combinations() -> Vec<SignalParameters> {
   let mut signal_parameter_combinations = vec![];
   let min = 5;
-  let max = 40;
+  let max = 50;
   let step = 5;
   let fast_periods = build_usize_range(min, max, step);
   let min = 10;
-  let max = 50;
+  let max = 100;
   let step = 10;
   let slow_periods = build_usize_range(min, max, step);
   for slow_periods in &slow_periods {
@@ -542,9 +543,8 @@ fn main() {
   for candle in &candles {
     candles_map.insert(candle.start_timestamp, candle);
   }
-  // print header
-  println!("grouping_key,fast_periods,slow_periods,profit_limit_percentage,stop_loss_percentage,trade_open_timestamp,trade_exit_timestamp,direction,profit_loss_percentage");
   // build all possible signal/trade combinations
+  let mut total_performance_map = std::collections::BTreeMap::new();
   let backtest_parameter_combinations = build_backtest_parameter_combinations();
   let signal_parameter_combinations = build_signal_parameter_combinations();
   for signal_parameters in &signal_parameter_combinations {
@@ -565,18 +565,32 @@ fn main() {
       assert!(trade_open.timestamp != trade_close.timestamp);
       // loop backtest parameter combinations
       for backtest_parameters in &backtest_parameter_combinations {
+        // backtest trade
+        let backtest_result = backtest_trade(trade_open, trade_close, &candles_map, backtest_parameters, candle_size_seconds);
+        // record performance
+        let profit_loss_percentage = backtest_result.profit_loss_percentage;
         let profit_limit_percentage = backtest_parameters.profit_limit_percentage;
         let stop_loss_percentage = backtest_parameters.stop_loss_percentage;
         let fast_periods = signal_parameters.fast_periods;
         let slow_periods = signal_parameters.slow_periods;
-        let grouping_key = trade_open.grouping_key;
-        let trade_open_timestamp = trade_open.timestamp;
-        let direction = &trade_open.direction;
-        let backtest_result = backtest_trade(trade_open, trade_close, &candles_map, backtest_parameters, candle_size_seconds);
-        let trade_exit_timestamp = backtest_result.exit_timestamp;
-        let profit_loss_percentage = backtest_result.profit_loss_percentage;
-        println!("{grouping_key},{fast_periods},{slow_periods},{profit_limit_percentage},{stop_loss_percentage},{trade_open_timestamp},{trade_exit_timestamp},{direction:?},{profit_loss_percentage:.6}");
+        let signal_key = (fast_periods, slow_periods);
+        let size_key = (OrderedFloat(profit_limit_percentage), OrderedFloat(stop_loss_percentage));
+        let total_key = (signal_key, size_key);
+        if total_performance_map.contains_key(&total_key) == false {
+          total_performance_map.insert(total_key, 0.0);
+        }
+        let total_key_performance = total_performance_map.get(&total_key).unwrap();
+        total_performance_map.insert(total_key, total_key_performance + profit_loss_percentage);
       }
     }
+  }
+  // print results
+  println!("fast_periods,slow_periods,profit_limit_percentage,stop_loss_percentage,profit_loss_percentage");
+  for (key, profit_loss_percentage) in total_performance_map.iter() {
+    let fast_periods = key.0.0;
+    let slow_periods = key.0.1;
+    let profit_limit_percentage = key.1.0;
+    let stop_loss_percentage = key.1.1;
+    println!("{fast_periods},{slow_periods},{profit_limit_percentage},{stop_loss_percentage},{profit_loss_percentage}");
   }
 }
