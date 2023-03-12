@@ -301,7 +301,7 @@ fn backtest_trade(
   // determine trade exit
   let determine_trade_exit = || {
     let mut pointer = trade_open.timestamp;
-    while pointer <= trade_close.timestamp {
+    while pointer < trade_close.timestamp { // do not include trade_close candle on purpose as to not introduce lookahead bias
       let candle = candles_map.get(&pointer).unwrap();
       // check for stop loss
       if trade_open.direction == Direction::Long {
@@ -330,6 +330,7 @@ fn backtest_trade(
       // progress pointer through time
       pointer += candle_size_seconds;
     }
+    // asume we close right at the open of the next candle due to direction change
     return (TradeExitReason::Close, close_price, close_candle);
   };
   let (exit_reason, exit_price, exit_candle) = determine_trade_exit();
@@ -606,6 +607,44 @@ fn main() {
   for candle in &candles {
     candles_map.insert(candle.start_timestamp, candle);
   }
+  // print header
+  println!("grouping_key,fast_periods,slow_periods,profit_limit_percentage,stop_loss_percentage,trade_open_timestamp,trade_exit_timestamp,direction,profit_loss_percentage");
+  // build all possible signal/trade combinations
+  let backtest_parameter_combinations = build_backtest_parameter_combinations();
+  let signal_parameter_combinations = build_signal_parameter_combinations();
+  for signal_parameters in &signal_parameter_combinations {
+    // build signals
+    let signals = build_signals(&candles, &candles_map, &signal_parameters, candle_size_seconds);
+    // build trades from signals
+    let trades = build_trades(&signals);
+    let trades_slice: &[Trade] = &trades;
+    let chunk_size = 2; // open + close
+    let chunked_trades: Vec<&[Trade]> = trades_slice.chunks(chunk_size).collect();
+    for chunk in chunked_trades {
+      // get open + close from chunk
+      let trade_open = &chunk[0];
+      let trade_close = &chunk[1];
+      assert!(trade_open.r#type == TradeType::Open);
+      assert!(trade_close.r#type == TradeType::Close);
+      assert!(trade_open.direction == trade_close.direction);
+      assert!(trade_open.timestamp != trade_close.timestamp);
+      // loop backtest parameter combinations
+      for backtest_parameters in &backtest_parameter_combinations {
+        let profit_limit_percentage = backtest_parameters.profit_limit_percentage;
+        let stop_loss_percentage = backtest_parameters.stop_loss_percentage;
+        let fast_periods = signal_parameters.fast_periods;
+        let slow_periods = signal_parameters.slow_periods;
+        let grouping_key = trade_open.grouping_key;
+        let trade_open_timestamp = trade_open.timestamp;
+        let direction = &trade_open.direction;
+        let backtest_result = backtest_trade(trade_open, trade_close, &candles_map, backtest_parameters, candle_size_seconds);
+        let trade_exit_timestamp = backtest_result.exit_timestamp;
+        let profit_loss_percentage = backtest_result.profit_loss_percentage;
+        println!("{grouping_key},{fast_periods},{slow_periods},{profit_limit_percentage},{stop_loss_percentage},{trade_open_timestamp},{trade_exit_timestamp},{direction:?},{profit_loss_percentage:.6}");
+      }
+    }
+  }
+  /*
   // combinations
   let backtest_parameter_combinations = build_backtest_parameter_combinations();
   let signal_parameter_combinations = build_signal_parameter_combinations();
@@ -660,5 +699,5 @@ fn main() {
     let stop_loss_percentage = backtest_parameters.stop_loss_percentage;
     let fast_slow_pair = format!("{fast_periods}:{slow_periods}");
     println!("{grouping_key},{warmup_periods},{fast_periods},{slow_periods},{fast_slow_pair},{slippage_percentage},{profit_limit_percentage},{stop_loss_percentage},{num_trades},{total_profit_loss_percentage}");
-  }
+  }*/
 }
